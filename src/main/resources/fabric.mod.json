@@ -22,6 +22,9 @@
     ],
     "fabric-datagen": [
       "dev.lucien.foundry.datagen.FoundryDatagen"
+    ],
+    "jei_mod_plugin": [
+      "dev.lucien.foundry.jei.FoundryJeiPlugin"
     ]
   },
   "mixins": [

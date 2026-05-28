@@ -15,6 +15,11 @@ data class FoundryRecipeDisplay(
     val ingredient: Ingredient
         get() = recipe.ingredient
 
+    /** Non-deprecated: pass directly to IIngredientAcceptor.add(ItemStackTemplate) */
+    val outputTemplate: net.minecraft.world.item.ItemStackTemplate
+        get() = recipe.result
+
+    /** Kept for display helpers that need a concrete ItemStack */
     val output: ItemStack
         get() = recipe.result.create()
 
@@ -26,6 +31,18 @@ data class FoundryRecipeDisplay(
 
     val byproductChancePercent: String
         get() = "${(byproductChance * 100).toInt()}%"
+
+    val hasBonusResult: Boolean
+        get() = recipe.bonusResultChance > 0f
+
+    val bonusResultChance: Float
+        get() = recipe.bonusResultChance
+
+    val bonusResultChancePercent: String
+        get() = "${(bonusResultChance * 100).toInt()}%"
+
+    val bonusRequiresLava: Boolean
+        get() = recipe.bonusRequiresLava
 
     val cookingTime: Int
         get() = recipe.cookingTime

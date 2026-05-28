@@ -64,10 +64,24 @@ class FoundryRecipeProvider(
             smelt("iron_block",    Items.RAW_IRON_BLOCK,    Items.IRON_BLOCK,    3.15f, 1200, 6.3f)
             smelt("gold_block",    Items.RAW_GOLD_BLOCK,    Items.GOLD_BLOCK,    3.15f, 1200, 9.0f)
             smelt("copper_block",  Items.RAW_COPPER_BLOCK,  Items.COPPER_BLOCK,  2.70f, 1200, 6.3f)
-            smelt("stone",         Items.COBBLESTONE,       Items.STONE,         0.0f,  100,  0.1f)
-            smelt("flint",         Items.GRAVEL,            Items.FLINT,         0.0f,  120,  0.1f)
-            smelt("glass",         Items.SAND,              Items.GLASS,         0.0f,  200,  0.1f)
-            smelt("glass_red_sand",Items.RED_SAND,          Items.GLASS,         0.0f,  200,  0.1f)
+            smelt("stone",               Items.COBBLESTONE,          Items.STONE,            0.0f,  100,  0.1f)
+            smelt("flint",               Items.GRAVEL,               Items.FLINT,            0.0f,  120,  0.1f)
+            smelt("glass",               Items.SAND,                 Items.GLASS,            0.0f,  200,  0.1f)
+            smelt("glass_red_sand",      Items.RED_SAND,             Items.GLASS,            0.0f,  200,  0.1f)
+
+            // ── Ore → ingot (all stone + deepslate + nether variants) ─────
+            smelt("iron_ingot_from_ore",             Items.IRON_ORE,             Items.IRON_INGOT,       0.35f, 200,  0.7f)
+            smelt("iron_ingot_from_deepslate_ore",   Items.DEEPSLATE_IRON_ORE,   Items.IRON_INGOT,       0.35f, 200,  0.7f)
+            smelt("gold_ingot_from_ore",             Items.GOLD_ORE,             Items.GOLD_INGOT,       0.35f, 200,  1.0f)
+            smelt("gold_ingot_from_deepslate_ore",   Items.DEEPSLATE_GOLD_ORE,   Items.GOLD_INGOT,       0.35f, 200,  1.0f)
+            smelt("gold_ingot_from_nether_ore",      Items.NETHER_GOLD_ORE,      Items.GOLD_INGOT,       0.35f, 100,  1.0f)
+            smelt("copper_ingot_from_ore",           Items.COPPER_ORE,           Items.COPPER_INGOT,     0.30f, 200,  0.7f)
+            smelt("copper_ingot_from_deepslate_ore", Items.DEEPSLATE_COPPER_ORE, Items.COPPER_INGOT,     0.30f, 200,  0.7f)
+
+            // ── Ancient debris → netherite scrap (50% bonus scrap with lava) ──────────
+            smelt("netherite_scrap", Items.ANCIENT_DEBRIS, Items.NETHERITE_SCRAP,
+                byproductChance = 0.0f, cookingTime = 400, experience = 2.0f,
+                bonusResultChance = 0.5f, bonusRequiresLava = true)
         }
 
         private fun smelt(
@@ -77,6 +91,8 @@ class FoundryRecipeProvider(
             byproductChance: Float,
             cookingTime: Int,
             experience: Float,
+            bonusResultChance: Float = 0.0f,
+            bonusRequiresLava: Boolean = false,
         ) {
             val key = ResourceKey.create(
                 Registries.RECIPE,
@@ -85,11 +101,13 @@ class FoundryRecipeProvider(
             output.accept(
                 key,
                 FoundryRecipe(
-                    ingredient      = Ingredient.of(input),
-                    result          = ItemStackTemplate(result),
-                    byproductChance = byproductChance,
-                    cookingTime     = cookingTime,
-                    experience      = experience,
+                    ingredient        = Ingredient.of(input),
+                    result            = ItemStackTemplate(result),
+                    byproductChance   = byproductChance,
+                    cookingTime       = cookingTime,
+                    experience        = experience,
+                    bonusResultChance = bonusResultChance,
+                    bonusRequiresLava = bonusRequiresLava,
                 ),
                 null,
             )

@@ -222,27 +222,46 @@ class FoundryBlockEntity(pos: BlockPos, state: BlockState) :
         return 0
     }
 
+    /** Returns true if [item] fits in [slotIndex] (empty or same item with room). */
+    private fun canFitInSlot(slotIndex: Int, item: ItemStack): Boolean {
+        val slot = items[slotIndex]
+        return when {
+            slot.isEmpty -> true
+            !ItemStack.isSameItemSameComponents(slot, item) -> false
+            else -> slot.count + item.count <= slot.maxStackSize
+        }
+    }
+
+    /**
+     * Tries to place [item] in the first available output slot (OUTPUT_SLOT → OUTPUT_SLOT_2 → OUTPUT_SLOT_3).
+     * Returns true if successfully placed.
+     */
+    private fun addToOutputSlots(item: ItemStack): Boolean {
+        for (slotIndex in intArrayOf(OUTPUT_SLOT, OUTPUT_SLOT_2, OUTPUT_SLOT_3)) {
+            val slot = items[slotIndex]
+            when {
+                slot.isEmpty -> { items[slotIndex] = item.copy(); return true }
+                ItemStack.isSameItemSameComponents(slot, item) &&
+                        slot.count + item.count <= slot.maxStackSize -> { slot.grow(item.count); return true }
+            }
+        }
+        return false
+    }
+
     private fun canOutput(recipe: FoundryRecipe): Boolean {
         if (items[INPUT_SLOT].isEmpty) return false
         val result = recipe.result.create()
-        val outputSlot = items[OUTPUT_SLOT]
-        val canFitOutput = when {
-            outputSlot.isEmpty -> true
-            !ItemStack.isSameItemSameComponents(outputSlot, result) -> false
-            else -> outputSlot.count + result.count <= outputSlot.maxStackSize
-        }
+
+        // At least one of the three output slots must be able to accept the result
+        val canFitOutput = canFitInSlot(OUTPUT_SLOT, result)
+                || canFitInSlot(OUTPUT_SLOT_2, result)
+                || canFitInSlot(OUTPUT_SLOT_3, result)
         if (!canFitOutput) return false
 
         if (recipe.byproductChance > 0f) {
             val minSlag = recipe.byproductChance.toInt().coerceAtLeast(1)
-            val byproduct = items[BYPRODUCT_SLOT]
-            val slag = ItemStack(ModItems.SLAG)
-            val canFitByproduct = when {
-                byproduct.isEmpty -> true
-                !ItemStack.isSameItemSameComponents(byproduct, slag) -> false
-                else -> byproduct.count + minSlag <= byproduct.maxStackSize
-            }
-            if (!canFitByproduct) return false
+            val slag    = ItemStack(ModItems.SLAG, minSlag)
+            if (!canFitInSlot(BYPRODUCT_SLOT, slag)) return false
         }
 
         return true
@@ -254,23 +273,29 @@ class FoundryBlockEntity(pos: BlockPos, state: BlockState) :
         // Consume one input item
         items[INPUT_SLOT].shrink(1)
 
-        // Main output
-        if (items[OUTPUT_SLOT].isEmpty) {
-            items[OUTPUT_SLOT] = result.copy()
-        } else {
-            items[OUTPUT_SLOT].grow(result.count)
-        }
+        // Primary output → fills OUTPUT_SLOT first, spills to OUTPUT_SLOT_2/3 if needed
+        addToOutputSlots(result)
 
         storedXp += recipe.experience
 
-        // Byproduct: floor(chance) guaranteed slag + fractional probability for one more.
-        // Allows byproductChance > 1 for bulk recipes (e.g. ore blocks = 9× single-ore chance).
+        // Bonus result (e.g. extra netherite scrap when lava is present)
+        if (recipe.bonusResultChance > 0f) {
+            val hasLava = fluidStorage.amount > 0L
+            if (!recipe.bonusRequiresLava || hasLava) {
+                if (level.random.nextFloat() < recipe.bonusResultChance) {
+                    addToOutputSlots(result.copy())
+                }
+            }
+        }
+
+        // Byproduct: floor(chance) guaranteed slag + fractional roll for one more.
+        // byproductChance > 1 is supported for bulk recipes (e.g. raw-ore-blocks).
         if (recipe.byproductChance > 0f) {
             val guaranteed = recipe.byproductChance.toInt()
-            val fraction = recipe.byproductChance - guaranteed
+            val fraction   = recipe.byproductChance - guaranteed
             val count = guaranteed + if (fraction > 0f && level.random.nextFloat() < fraction) 1 else 0
             if (count > 0) {
-                val slag = ItemStack(ModItems.SLAG)
+                val slag     = ItemStack(ModItems.SLAG)
                 val byproduct = items[BYPRODUCT_SLOT]
                 when {
                     byproduct.isEmpty ->
@@ -343,12 +368,14 @@ class FoundryBlockEntity(pos: BlockPos, state: BlockState) :
     // ── Constants ─────────────────────────────────────────────────────────────
 
     companion object {
-        const val INPUT_SLOT = 0
-        const val FUEL_SLOT = 1
-        const val OUTPUT_SLOT = 2
-        const val BYPRODUCT_SLOT = 3
-        const val LAVA_BUCKET_SLOT = 4
-        const val INVENTORY_SIZE = 5
+        const val INPUT_SLOT        = 0
+        const val FUEL_SLOT         = 1
+        const val OUTPUT_SLOT       = 2   // primary result
+        const val OUTPUT_SLOT_2     = 3   // bonus result / overflow
+        const val OUTPUT_SLOT_3     = 4   // overflow / future use
+        const val BYPRODUCT_SLOT    = 5   // slag
+        const val LAVA_BUCKET_SLOT  = 6
+        const val INVENTORY_SIZE    = 7
 
         val LAVA_CAPACITY: Long = FluidConstants.BUCKET * 4          // 4-bucket tank
         val LAVA_DRAIN_PER_TICK: Long = FluidConstants.BUCKET / 1600 // ~0.025 bucket per boosted recipe

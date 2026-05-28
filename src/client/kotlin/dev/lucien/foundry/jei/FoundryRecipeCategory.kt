@@ -1,55 +1,150 @@
 package dev.lucien.foundry.jei
 
-import dev.lucien.foundry.Foundry
 import dev.lucien.foundry.registry.ModBlocks
 import mezz.jei.api.gui.builder.IRecipeLayoutBuilder
 import mezz.jei.api.gui.ingredient.IRecipeSlotsView
+import mezz.jei.api.gui.widgets.IRecipeExtrasBuilder
 import mezz.jei.api.helpers.IGuiHelper
 import mezz.jei.api.recipe.IFocusGroup
-import mezz.jei.api.recipe.RecipeType
+import mezz.jei.api.recipe.types.IRecipeType
 import mezz.jei.api.recipe.category.IRecipeCategory
+import net.minecraft.ChatFormatting
 import net.minecraft.client.gui.GuiGraphicsExtractor
 import net.minecraft.network.chat.Component
-import net.minecraft.resources.Identifier
+import net.minecraft.network.chat.FormattedText
 import net.minecraft.world.item.ItemStack
 import net.minecraft.world.item.Items
 
 class FoundryRecipeCategory(guiHelper: IGuiHelper) : IRecipeCategory<FoundryRecipeDisplay> {
 
-    private val icon = ItemStack(ModBlocks.FOUNDRY)
-    private val background = guiHelper.createBlankDrawable(160, 90)
+    private val background = guiHelper.createBlankDrawable(WIDTH, HEIGHT)
 
-    override fun getRecipeType(): RecipeType<FoundryRecipeDisplay> =
+    override fun getRecipeType(): IRecipeType<FoundryRecipeDisplay> =
         FoundryJeiPlugin.FOUNDRY_RECIPE_TYPE
 
-    override fun getTitle(): Component =
-        Component.literal("Foundry Smelting")
+    override fun getTitle(): Component = Component.literal("Foundry Smelting")
 
-    override fun getWidth(): Int = 160
+    override fun getWidth() = WIDTH
+    override fun getHeight() = HEIGHT
 
-    override fun getHeight(): Int = 90
-
-    override fun getIcon(): mezz.jei.api.gui.drawable.IDrawable? =
-        null
+    override fun getIcon(): mezz.jei.api.gui.drawable.IDrawable? = null
 
     override fun setRecipe(
         builder: IRecipeLayoutBuilder,
         display: FoundryRecipeDisplay,
-        focuses: IFocusGroup
+        focuses: IFocusGroup,
     ) {
-        // Input slot
-        builder.addInputSlot(10, 30)
-            .addIngredients(display.ingredient)
+        // ── Input ────────────────────────────────────────────────────────
+        builder.addInputSlot(INPUT_X, SLOT_Y)
+            .add(display.ingredient)
 
-        // Primary output slot
-        builder.addOutputSlot(140, 30)
-            .addItemStack(display.output)
+        // ── Primary output (tooltip: XP + cook time) ─────────────────────
+        builder.addOutputSlot(OUTPUT_X, SLOT_Y)
+            .add(display.outputTemplate)
+            .addRichTooltipCallback { _, tooltip ->
+                tooltip.add(
+                    Component.literal("%.1f XP".format(display.experience))
+                        .withStyle(ChatFormatting.GOLD)
+                )
+                tooltip.add(
+                    Component.literal("%.1fs cooking time".format(display.cookingTimeSeconds))
+                        .withStyle(ChatFormatting.GRAY)
+                )
+            }
 
-        // Byproduct (slag) slot - shows with chance percentage
-        if (display.byproductChance > 0) {
-            builder.addOutputSlot(140, 50)
-                .addItemStack(display.byproduct)
+        // ── Byproduct: Slag (tooltip: chance %) ──────────────────────────
+        var nextOutputY = SLOT_Y + 26
+        if (display.byproductChance > 0f) {
+            builder.addOutputSlot(OUTPUT_X, nextOutputY)
+                .add(display.byproduct)
+                .addRichTooltipCallback { _, tooltip ->
+                    tooltip.add(
+                        Component.literal("${display.byproductChancePercent} chance to drop")
+                            .withStyle(ChatFormatting.GRAY)
+                    )
+                }
+            nextOutputY += 26
         }
+
+        // ── Bonus result (e.g. extra netherite scrap) ─────────────────────
+        if (display.hasBonusResult) {
+            builder.addOutputSlot(OUTPUT_X, nextOutputY)
+                .add(display.outputTemplate)
+                .addRichTooltipCallback { _, tooltip ->
+                    tooltip.add(
+                        Component.literal("${display.bonusResultChancePercent} chance for a second")
+                            .withStyle(ChatFormatting.GRAY)
+                    )
+                    if (display.bonusRequiresLava) {
+                        tooltip.add(
+                            Component.literal("Requires lava in the tank")
+                                .withStyle(ChatFormatting.AQUA)
+                        )
+                    }
+                }
+        }
+
+        // ── Fuels (each with speed-multiplier tooltip) ────────────────────
+        // Coal / Charcoal: cycles between both items
+        builder.addInputSlot(FUEL_X, FUEL_Y)
+            .addItemStacks(listOf(ItemStack(Items.COAL), ItemStack(Items.CHARCOAL)))
+            .addRichTooltipCallback { _, tooltip ->
+                tooltip.add(
+                    Component.literal("Fuel: 2× speed")
+                        .withStyle(ChatFormatting.YELLOW)
+                )
+                tooltip.add(
+                    Component.literal("With lava: 4× speed")
+                        .withStyle(ChatFormatting.GRAY)
+                )
+            }
+
+        // Blaze Rod: 4× / 8× with lava
+        builder.addInputSlot(FUEL_X + 25, FUEL_Y)
+            .add(Items.BLAZE_ROD)
+            .addRichTooltipCallback { _, tooltip ->
+                tooltip.add(
+                    Component.literal("Fuel: 4× speed")
+                        .withStyle(ChatFormatting.YELLOW)
+                )
+                tooltip.add(
+                    Component.literal("With lava: 8× speed")
+                        .withStyle(ChatFormatting.GRAY)
+                )
+            }
+
+        // Lava Bucket: 6× speed, fills the lava slot
+        builder.addInputSlot(FUEL_X + 50, FUEL_Y)
+            .add(Items.LAVA_BUCKET)
+            .addRichTooltipCallback { _, tooltip ->
+                tooltip.add(
+                    Component.literal("Fuel: 6× speed")
+                        .withStyle(ChatFormatting.YELLOW)
+                )
+                tooltip.add(
+                    Component.literal("Fills the lava slot")
+                        .withStyle(ChatFormatting.GRAY)
+                )
+            }
+    }
+
+    override fun createRecipeExtras(
+        builder: IRecipeExtrasBuilder,
+        display: FoundryRecipeDisplay,
+        focuses: IFocusGroup,
+    ) {
+        // Arrow whose animation duration matches the recipe's cook time
+        builder.addAnimatedRecipeArrow(display.cookingTime)
+            .setPosition(ARROW_X, ARROW_Y)
+
+        // "Fuels:" section label above the fuel slots
+        builder.addText(
+            listOf<FormattedText>(
+                Component.literal("Fuels:").withStyle(ChatFormatting.DARK_GRAY)
+            ),
+            /* maxWidth = */ 50,
+            /* maxHeight = */ 9,
+        ).setPosition(FUEL_X, FUEL_Y - 11)
     }
 
     override fun draw(
@@ -57,10 +152,24 @@ class FoundryRecipeCategory(guiHelper: IGuiHelper) : IRecipeCategory<FoundryReci
         recipeSlotsView: IRecipeSlotsView,
         graphics: GuiGraphicsExtractor,
         mouseX: Double,
-        mouseY: Double
+        mouseY: Double,
     ) {
-        // JEI handles basic layout rendering.
-        // Fuel speed information is documented in FoundryRecipeDisplay.FUEL_SPEEDS
-        // and can be viewed via tooltips or the JEI UI.
+        // All display is handled via slot tooltips and text/arrow widgets
+    }
+
+    private companion object {
+        const val WIDTH  = 160
+        const val HEIGHT = 110
+
+        // Top row: input → arrow → output / byproduct
+        const val SLOT_Y   = 5
+        const val INPUT_X  = 10
+        const val ARROW_X  = 40
+        const val ARROW_Y  = 8
+        const val OUTPUT_X = 110
+
+        // Bottom row: fuel items
+        const val FUEL_X = 5
+        const val FUEL_Y = 83
     }
 }
