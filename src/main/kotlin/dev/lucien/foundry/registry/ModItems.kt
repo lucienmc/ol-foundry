@@ -1,6 +1,7 @@
 package dev.lucien.foundry.registry
 
 import dev.lucien.foundry.Foundry
+import dev.lucien.foundry.item.FoundryItem
 import net.fabricmc.fabric.api.creativetab.v1.FabricCreativeModeTab
 import net.minecraft.core.Registry
 import net.minecraft.core.registries.BuiltInRegistries
@@ -19,8 +20,8 @@ object ModItems {
     val SLAG: Item = register("slag", Item(Item.Properties().setId(itemKey("slag"))))
 
     /** Block items (registered after blocks exist) */
-    val FOUNDRY_ITEM: BlockItem =
-        register("foundry", BlockItem(ModBlocks.FOUNDRY, Item.Properties().setId(itemKey("foundry"))))
+    val FOUNDRY_ITEM: FoundryItem =
+        register("foundry", FoundryItem(ModBlocks.FOUNDRY, Item.Properties().setId(itemKey("foundry"))))
     val SLAG_BRICKS_ITEM: BlockItem =
         register("slag_bricks", BlockItem(ModBlocks.SLAG_BRICKS, Item.Properties().setId(itemKey("slag_bricks"))))
 

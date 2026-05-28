@@ -25,7 +25,7 @@ class FoundryMenu private constructor(
     constructor(containerId: Int, inventory: Inventory) : this(
         containerId, inventory,
         SimpleContainer(FoundryBlockEntity.INVENTORY_SIZE),
-        SimpleContainerData(5),
+        SimpleContainerData(6),
         null
     )
 
@@ -84,6 +84,7 @@ class FoundryMenu private constructor(
     fun getFuelBurnLeft(): Int  = data.get(2)
     fun getFuelBurnMax(): Int   = data.get(3).coerceAtLeast(1)
     fun getLavaPercent(): Int   = data.get(4)
+    fun getLavaMb(): Int        = data.get(5)        // 0..4000 mB
     fun isBurning(): Boolean    = getFuelBurnLeft() > 0
 
     // ── Shift-click routing ───────────────────────────────────────────────────

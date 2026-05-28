@@ -102,6 +102,8 @@ class FoundryBlockEntity(pos: BlockPos, state: BlockState) :
             2 -> fuelBurnTimeLeft.coerceAtMost(Short.MAX_VALUE.toInt())
             3 -> maxFuelBurnTime.coerceAtMost(Short.MAX_VALUE.toInt())
             4 -> if (fluidStorage.amount > 0L) ((fluidStorage.amount * 100L) / LAVA_CAPACITY).toInt() else 0
+            // slot 5: lava in millibuckets (81 droplets = 1 mB); max 4000 mB, fits in Int
+            5 -> (fluidStorage.amount / 81L).toInt()
             else -> 0
         }
 
@@ -111,11 +113,11 @@ class FoundryBlockEntity(pos: BlockPos, state: BlockState) :
                 1 -> smeltTotal = value
                 2 -> fuelBurnTimeLeft = value
                 3 -> maxFuelBurnTime = value
-                // index 4 is read-only on client
+                // indices 4 and 5 are read-only on client
             }
         }
 
-        override fun getCount(): Int = 5
+        override fun getCount(): Int = 6
     }
 
     // ── Server Tick ───────────────────────────────────────────────────────────

@@ -1,7 +1,8 @@
 {
   "variants": {
-    "": {
-      "model": "foundry:block/foundry"
-    }
+    "facing=north": { "model": "foundry:block/foundry" },
+    "facing=east":  { "model": "foundry:block/foundry", "y": 90  },
+    "facing=south": { "model": "foundry:block/foundry", "y": 180 },
+    "facing=west":  { "model": "foundry:block/foundry", "y": 270 }
   }
 }
