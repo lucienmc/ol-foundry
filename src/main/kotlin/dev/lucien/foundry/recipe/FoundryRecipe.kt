@@ -5,7 +5,6 @@ import com.mojang.serialization.MapCodec
 import com.mojang.serialization.codecs.RecordCodecBuilder
 import dev.lucien.foundry.registry.ModRecipes
 import net.minecraft.network.RegistryFriendlyByteBuf
-import net.minecraft.network.codec.ByteBufCodecs
 import net.minecraft.network.codec.StreamCodec
 import net.minecraft.world.item.ItemStack
 import net.minecraft.world.item.ItemStackTemplate
@@ -74,14 +73,15 @@ class FoundryRecipe(
         val STREAM_CODEC: StreamCodec<RegistryFriendlyByteBuf, FoundryRecipe> =
             object : StreamCodec<RegistryFriendlyByteBuf, FoundryRecipe> {
                 override fun decode(buf: RegistryFriendlyByteBuf) = FoundryRecipe(
-                    ingredient        = Ingredient.CONTENTS_STREAM_CODEC.decode(buf),
-                    result            = ItemStackTemplate.STREAM_CODEC.decode(buf),
-                    byproductChance   = buf.readFloat(),
-                    cookingTime       = buf.readInt(),
-                    experience        = buf.readFloat(),
+                    ingredient = Ingredient.CONTENTS_STREAM_CODEC.decode(buf),
+                    result = ItemStackTemplate.STREAM_CODEC.decode(buf),
+                    byproductChance = buf.readFloat(),
+                    cookingTime = buf.readInt(),
+                    experience = buf.readFloat(),
                     bonusResultChance = buf.readFloat(),
                     bonusRequiresLava = buf.readBoolean(),
                 )
+
                 override fun encode(buf: RegistryFriendlyByteBuf, v: FoundryRecipe) {
                     Ingredient.CONTENTS_STREAM_CODEC.encode(buf, v.ingredient)
                     ItemStackTemplate.STREAM_CODEC.encode(buf, v.result)

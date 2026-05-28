@@ -48,30 +48,15 @@ class FoundryMenu private constructor(
         addSlot(Slot(container, FoundryBlockEntity.FUEL_SLOT, FUEL_X + 1, FUEL_Y + 1))
 
         // ── Three output slots (fills left-to-right) ──────────────────────────
-        addSlot(object :
-            Slot(container, FoundryBlockEntity.OUTPUT_SLOT, OUTPUT1_X + 1, OUTPUT1_Y + 1) {
-            override fun mayPlace(stack: ItemStack) = false
-            override fun onTake(player: Player, stack: ItemStack) {
-                if (!player.level().isClientSide) foundry?.popExperience(player.level() as ServerLevel)
-                super.onTake(player, stack)
-            }
-        })
-        addSlot(object :
-            Slot(container, FoundryBlockEntity.OUTPUT_SLOT_2, OUTPUT2_X + 1, OUTPUT2_Y + 1) {
-            override fun mayPlace(stack: ItemStack) = false
-            override fun onTake(player: Player, stack: ItemStack) {
-                if (!player.level().isClientSide) foundry?.popExperience(player.level() as ServerLevel)
-                super.onTake(player, stack)
-            }
-        })
-        addSlot(object :
-            Slot(container, FoundryBlockEntity.OUTPUT_SLOT_3, OUTPUT3_X + 1, OUTPUT3_Y + 1) {
-            override fun mayPlace(stack: ItemStack) = false
-            override fun onTake(player: Player, stack: ItemStack) {
-                if (!player.level().isClientSide) foundry?.popExperience(player.level() as ServerLevel)
-                super.onTake(player, stack)
-            }
-        })
+        for ((slotIdx, x, y) in OUTPUT_SLOTS) {
+            addSlot(object : Slot(container, slotIdx, x + 1, y + 1) {
+                override fun mayPlace(stack: ItemStack) = false
+                override fun onTake(player: Player, stack: ItemStack) {
+                    if (!player.level().isClientSide) foundry?.popExperience(player.level() as ServerLevel)
+                    super.onTake(player, stack)
+                }
+            })
+        }
 
         // ── Byproduct (slag) below Output3 ───────────────────────────────────
         addSlot(object :
@@ -202,5 +187,21 @@ class FoundryMenu private constructor(
         const val BAR_Y = 7
         const val BAR_W = 16
         const val BAR_H = 50
+
+        val OUTPUT_SLOTS: List<Triple<Int, Int, Int>> = listOf(
+            Triple(FoundryBlockEntity.OUTPUT_SLOT,   OUTPUT1_X, OUTPUT1_Y),
+            Triple(FoundryBlockEntity.OUTPUT_SLOT_2, OUTPUT2_X, OUTPUT2_Y),
+            Triple(FoundryBlockEntity.OUTPUT_SLOT_3, OUTPUT3_X, OUTPUT3_Y),
+        )
+
+        val ALL_SLOT_POSITIONS: List<Pair<Int, Int>> = listOf(
+            Pair(INPUT_X, INPUT_Y),
+            Pair(FUEL_X, FUEL_Y),
+            Pair(OUTPUT1_X, OUTPUT1_Y),
+            Pair(OUTPUT2_X, OUTPUT2_Y),
+            Pair(OUTPUT3_X, OUTPUT3_Y),
+            Pair(BYPRODUCT_X, BYPRODUCT_Y),
+            Pair(LAVA_BUCKET_X, LAVA_BUCKET_Y),
+        )
     }
 }

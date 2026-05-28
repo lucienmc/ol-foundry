@@ -1,0 +1,9 @@
+{
+  "type": "foundry:foundry_smelting",
+  "byproduct_chance": 0.3,
+  "experience": 0.7,
+  "ingredient": "minecraft:deepslate_copper_ore",
+  "result": {
+    "id": "minecraft:copper_ingot"
+  }
+}

@@ -152,16 +152,16 @@ class FoundryBlockEntity(pos: BlockPos, state: BlockState) :
         }
 
         val isHot = fuelBurnTimeLeft > 0
-        if (isHot) fuelBurnTimeLeft--
+        var dirty = false
+        if (isHot) { fuelBurnTimeLeft--; dirty = true }
 
         if (isHot && canSmelt) {
-            // Sync cooking time to the current recipe when starting a fresh item
             if (smeltProgress == 0) smeltTotal = recipe!!.cookingTime
 
-            // Base 2× speed (blast-furnace parity); lava doubles it again to 4×
             val hasLavaBoost = fluidStorage.amount > 0L
             val speedMultiplier = if (hasLavaBoost) 4 else 2
             smeltProgress += speedMultiplier
+            dirty = true
 
             if (hasLavaBoost) {
                 Transaction.openOuter().use { tx ->
@@ -175,11 +175,11 @@ class FoundryBlockEntity(pos: BlockPos, state: BlockState) :
                 craftResult(recipe, level)
             }
         } else if (smeltProgress > 0 && !isHot) {
-            // Cool down if no heat
             smeltProgress = (smeltProgress - 2).coerceAtLeast(0)
+            dirty = true
         }
 
-        setChanged()
+        if (dirty) setChanged()
     }
 
     private fun tryStartFuel(level: ServerLevel) {
@@ -191,23 +191,12 @@ class FoundryBlockEntity(pos: BlockPos, state: BlockState) :
         maxFuelBurnTime = burnTime
         fuelBurnTimeLeft = burnTime
 
-        val remainder = fuel.recurrenceItem
+        val remainder = fuel.item.getCraftingRemainder()?.create() ?: ItemStack.EMPTY
         fuel.shrink(1)
         if (fuel.isEmpty && !remainder.isEmpty) {
             items[FUEL_SLOT] = remainder
         }
     }
-
-    /**
-     * Returns the remaining item after the fuel is consumed (e.g. bucket from lava bucket).
-     * Uses getCraftingRemainingItem() which is the Mojang-mapped name.
-     * If this doesn't compile, try: item.craftingRemainder or item.remainingItem
-     */
-    private val ItemStack.recurrenceItem: ItemStack
-        get() {
-            val template = item.getCraftingRemainder()
-            return template?.create() ?: ItemStack.EMPTY
-        }
 
     /**
      * Checks vanilla fuel values, then falls back to custom fuels (slag).

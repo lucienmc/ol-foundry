@@ -2,7 +2,6 @@ package dev.lucien.foundry.screen
 
 import dev.lucien.foundry.Foundry
 import dev.lucien.foundry.menu.FoundryMenu
-import dev.lucien.foundry.screen.FoundryScreen.Companion.LAVA_FILL
 import net.minecraft.ChatFormatting
 import net.minecraft.client.gui.GuiGraphicsExtractor
 import net.minecraft.client.gui.screens.inventory.AbstractContainerScreen
@@ -27,6 +26,7 @@ class FoundryScreen(
         private val LAVA_FILL = Identifier.fromNamespaceAndPath(
             Foundry.MOD_ID, "container/foundry/lava_fill"
         )
+        private val SLOT_SPRITE = Identifier.withDefaultNamespace("container/slot")
 
 
         // Lava fill area: 1-px inset from the gauge border.
@@ -66,8 +66,12 @@ class FoundryScreen(
             BACKGROUND_TEXTURE_HEIGHT
         )
 
+        // 2. Slot outlines (vanilla slot sprite, one per slot position)
+        for ((sx, sy) in FoundryMenu.ALL_SLOT_POSITIONS) {
+            graphics.blitSprite(RenderPipelines.GUI_TEXTURED, SLOT_SPRITE, xo + sx, yo + sy, 18, 18)
+        }
 
-        // 4. Animated flame (overlays the static; shrinks from top as fuel depletes)
+        // 3. Animated flame (overlays the static; shrinks from top as fuel depletes)
         if (menu.isBurning()) {
             val fireH =
                 (menu.getFuelBurnLeft() * FoundryMenu.FLAME_H / menu.getFuelBurnMax()).coerceIn(
@@ -88,7 +92,7 @@ class FoundryScreen(
             )
         }
 
-        // 5. Animated arrow (overlays the static; grows left→right as smelting progresses)
+        // 4. Animated arrow (overlays the static; grows left→right as smelting progresses)
         val arrowW =
             (menu.getSmeltProgress() * FoundryMenu.ARROW_W / menu.getSmeltTotal()).coerceIn(
                 0, FoundryMenu.ARROW_W

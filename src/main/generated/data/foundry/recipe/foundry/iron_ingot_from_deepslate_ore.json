@@ -1,0 +1,9 @@
+{
+  "type": "foundry:foundry_smelting",
+  "byproduct_chance": 0.35,
+  "experience": 0.7,
+  "ingredient": "minecraft:deepslate_iron_ore",
+  "result": {
+    "id": "minecraft:iron_ingot"
+  }
+}

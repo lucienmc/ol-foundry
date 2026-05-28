@@ -1,12 +1,28 @@
 {
+  "format_version": "1.21.11",
+  "credit": "Made with Blockbench",
   "parent": "minecraft:block/cube",
   "textures": {
-    "down": "foundry:block/foundry_bottom",
     "east": "foundry:block/foundry_left",
     "north": "foundry:block/foundry_front",
     "particle": "foundry:block/foundry_back",
     "south": "foundry:block/foundry_back",
     "up": "foundry:block/foundry_top",
-    "west": "foundry:block/foundry_right"
-  }
+    "west": "foundry:block/foundry_right",
+    "down": "minecraft:block/smooth_stone"
+  },
+  "elements": [
+    {
+      "from": [0, 0, 0],
+      "to": [16, 16, 16],
+      "faces": {
+        "north": { "uv": [0, 0, 16, 16], "texture": "#north" },
+        "east": { "uv": [0, 0, 16, 16], "texture": "#west" },
+        "south": { "uv": [0, 0, 16, 16], "texture": "#south" },
+        "west": { "uv": [0, 0, 16, 16], "texture": "#east" },
+        "up": { "uv": [0, 0, 16, 16], "texture": "#up" },
+        "down": { "uv": [0, 0, 16, 16], "texture": "#down" }
+      }
+    }
+  ]
 }
