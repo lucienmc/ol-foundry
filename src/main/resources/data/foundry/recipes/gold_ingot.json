@@ -1,0 +1,11 @@
+{
+  "type": "foundry:foundry_smelting",
+  "ingredient": {
+    "item": "minecraft:gold_ore"
+  },
+  "result": {
+    "item": "minecraft:gold_ingot"
+  },
+  "cooking_time": 150,
+  "experience": 1.0
+}
