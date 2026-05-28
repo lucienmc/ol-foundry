@@ -1,0 +1,9 @@
+{
+  "required": true,
+  "package": "dev.lucien.foundry.mixin",
+  "compatibilityLevel": "JAVA_25",
+  "mixins": [],
+  "injectors": {
+    "defaultRequire": 1
+  }
+}

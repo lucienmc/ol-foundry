@@ -1,0 +1,8 @@
+.idea/
+gradle/
+.gradle/
+.kotlin/
+build/
+
+run/*
+!run/options.txt

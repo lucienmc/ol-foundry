@@ -1,0 +1,8 @@
+{
+  "type": "foundry:foundry_smelting",
+  "ingredient": "minecraft:cobblestone",
+  "result": { "id": "minecraft:stone" },
+  "byproduct_chance": 0.0,
+  "cooking_time": 100,
+  "experience": 0.1
+}

@@ -1,0 +1,7 @@
+{
+  "variants": {
+    "": {
+      "model": "foundry:block/slag_bricks"
+    }
+  }
+}

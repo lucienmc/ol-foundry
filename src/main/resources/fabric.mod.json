@@ -1,0 +1,37 @@
+{
+  "schemaVersion": 1,
+  "id": "${mod_id}",
+  "version": "${version}",
+  "name": "Foundry",
+  "description": "An advanced blast furnace with heat sources, fluid inputs, and smelting byproducts.",
+  "authors": [
+    "Lucien"
+  ],
+  "contact": {
+    "sources": "https://github.com/lucien/foundry"
+  },
+  "license": "MIT",
+  "icon": "assets/foundry/icon.png",
+  "environment": "*",
+  "entrypoints": {
+    "main": [
+      "dev.lucien.foundry.Foundry"
+    ],
+    "client": [
+      "dev.lucien.foundry.FoundryClient"
+    ]
+  },
+  "mixins": [
+    "foundry.mixins.json",
+    {
+      "config": "foundry.client.mixins.json",
+      "environment": "client"
+    }
+  ],
+  "depends": {
+    "fabricloader": ">=0.19.2",
+    "minecraft": "~26.1.2",
+    "java": ">=25",
+    "fabric-api": "*"
+  }
+}

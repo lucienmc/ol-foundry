@@ -1,0 +1,8 @@
+{
+  "type": "foundry:foundry_smelting",
+  "ingredient": "minecraft:raw_copper",
+  "result": { "id": "minecraft:copper_ingot" },
+  "byproduct_chance": 0.30,
+  "cooking_time": 150,
+  "experience": 0.7
+}

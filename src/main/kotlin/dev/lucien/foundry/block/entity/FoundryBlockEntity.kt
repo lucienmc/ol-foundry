@@ -1,0 +1,322 @@
+package dev.lucien.foundry.block.entity
+
+import dev.lucien.foundry.menu.FoundryMenu
+import dev.lucien.foundry.recipe.FoundryRecipe
+import dev.lucien.foundry.recipe.FoundryRecipeInput
+import dev.lucien.foundry.registry.ModBlockEntities
+import dev.lucien.foundry.registry.ModItems
+import dev.lucien.foundry.registry.ModRecipes
+import dev.lucien.foundry.util.ImplementedContainer
+import net.fabricmc.fabric.api.transfer.v1.fluid.FluidConstants
+import net.fabricmc.fabric.api.transfer.v1.fluid.FluidVariant
+import net.fabricmc.fabric.api.transfer.v1.storage.base.SingleVariantStorage
+import net.fabricmc.fabric.api.transfer.v1.transaction.Transaction
+import net.minecraft.core.BlockPos
+import net.minecraft.core.HolderLookup
+import net.minecraft.core.NonNullList
+import net.minecraft.nbt.CompoundTag
+import net.minecraft.network.chat.Component
+import net.minecraft.network.protocol.Packet
+import net.minecraft.network.protocol.game.ClientGamePacketListener
+import net.minecraft.network.protocol.game.ClientboundBlockEntityDataPacket
+import net.minecraft.server.level.ServerLevel
+import net.minecraft.world.ContainerHelper
+import net.minecraft.world.MenuProvider
+import net.minecraft.world.entity.player.Inventory
+import net.minecraft.world.entity.player.Player
+import net.minecraft.world.inventory.AbstractContainerMenu
+import net.minecraft.world.inventory.ContainerData
+import net.minecraft.world.item.ItemStack
+import net.minecraft.world.item.Items
+import net.minecraft.world.level.Level
+import net.minecraft.world.level.block.entity.BlockEntity
+import net.minecraft.world.level.block.state.BlockState
+import net.minecraft.world.level.material.Fluids
+import net.minecraft.world.level.storage.ValueInput
+import net.minecraft.world.level.storage.ValueOutput
+
+class FoundryBlockEntity(pos: BlockPos, state: BlockState) :
+    BlockEntity(ModBlockEntities.FOUNDRY, pos, state),
+    ImplementedContainer,
+    MenuProvider {
+
+    // ── Inventory ────────────────────────────────────────────────────────────
+
+    private val items: NonNullList<ItemStack> =
+        NonNullList.withSize(INVENTORY_SIZE, ItemStack.EMPTY)
+
+    override fun getItems(): NonNullList<ItemStack> = items
+
+    /** Expose Container.stillValid backed by block proximity check */
+    override fun stillValid(player: Player): Boolean =
+        net.minecraft.world.Container.stillValidBlockEntity(this, player)
+
+    // ── Fluid Tank ────────────────────────────────────────────────────────────
+
+    /**
+     * Lava storage tank (capacity: 4 buckets).
+     * Exposed to pipes via Fabric Transfer API (see ModBlockEntities).
+     */
+    val fluidStorage = object : SingleVariantStorage<FluidVariant>() {
+        override fun getBlankVariant(): FluidVariant =
+            FluidVariant.blank()
+
+        override fun getCapacity(variant: FluidVariant): Long = LAVA_CAPACITY
+
+        override fun canInsert(variant: FluidVariant): Boolean =
+            variant.fluid == Fluids.LAVA
+
+        override fun canExtract(variant: FluidVariant): Boolean =
+            true
+
+        override fun onFinalCommit() {
+            setChanged()
+        }
+    }
+
+    // ── Smelting State ────────────────────────────────────────────────────────
+
+    /** Remaining burn ticks for the currently burning fuel piece */
+    var fuelBurnTimeLeft: Int = 0
+
+    /** Total burn ticks of the fuel piece that is currently burning */
+    var maxFuelBurnTime: Int = 0
+
+    /** How many ticks of progress have been made on the current recipe */
+    var smeltProgress: Int = 0
+
+    /** Total ticks needed to complete the current recipe (may vary by recipe) */
+    var smeltTotal: Int = DEFAULT_COOK_TIME
+
+    // ── ContainerData (synced to client for progress bars) ────────────────────
+
+    val containerData: ContainerData = object : ContainerData {
+        override fun get(index: Int): Int = when (index) {
+            0 -> smeltProgress
+            1 -> smeltTotal
+            2 -> fuelBurnTimeLeft.coerceAtMost(Short.MAX_VALUE.toInt())
+            3 -> maxFuelBurnTime.coerceAtMost(Short.MAX_VALUE.toInt())
+            4 -> if (fluidStorage.amount > 0L) ((fluidStorage.amount * 100L) / LAVA_CAPACITY).toInt() else 0
+            else -> 0
+        }
+
+        override fun set(index: Int, value: Int) {
+            when (index) {
+                0 -> smeltProgress = value
+                1 -> smeltTotal = value
+                2 -> fuelBurnTimeLeft = value
+                3 -> maxFuelBurnTime = value
+                // index 4 is read-only on client
+            }
+        }
+
+        override fun getCount(): Int = 5
+    }
+
+    // ── Server Tick ───────────────────────────────────────────────────────────
+
+    private fun serverTick(level: ServerLevel) {
+        // Process lava bucket slot: consume a lava bucket to fill the tank
+        val bucketStack = items[LAVA_BUCKET_SLOT]
+        if (!bucketStack.isEmpty && bucketStack.`is`(Items.LAVA_BUCKET)) {
+            val space = LAVA_CAPACITY - fluidStorage.amount
+            if (space >= FluidConstants.BUCKET) {
+                Transaction.openOuter().use { tx ->
+                    fluidStorage.insert(FluidVariant.of(Fluids.LAVA), FluidConstants.BUCKET, tx)
+                    tx.commit()
+                }
+                items[LAVA_BUCKET_SLOT] = ItemStack(Items.BUCKET)
+            }
+        }
+
+        val inputStack = items[INPUT_SLOT]
+        val recipeInput = FoundryRecipeInput(inputStack, fluidStorage.amount > 0L)
+
+        val recipeHolder = level.recipeAccess()
+            .getRecipeFor(ModRecipes.FOUNDRY_RECIPE_TYPE, recipeInput, level)
+            .orElse(null)
+
+        val recipe = recipeHolder?.value()
+        val canSmelt = recipe != null && canOutput(recipe)
+
+        // Start burning a new fuel piece if needed
+        if (canSmelt && fuelBurnTimeLeft <= 0) {
+            tryStartFuel(level)
+        }
+
+        val isHot = fuelBurnTimeLeft > 0
+        if (isHot) fuelBurnTimeLeft--
+
+        if (isHot && canSmelt) {
+            // Speed multiplier: +1x when lava tank has fluid
+            val hasLavaBoost = fluidStorage.amount > 0L
+            val speedMultiplier = if (hasLavaBoost) 2 else 1
+            smeltProgress += speedMultiplier
+
+            // Drain lava proportional to speed bonus used
+            if (hasLavaBoost) {
+                Transaction.openOuter().use { tx ->
+                    fluidStorage.extract(FluidVariant.of(Fluids.LAVA), LAVA_DRAIN_PER_TICK, tx)
+                    tx.commit()
+                }
+            }
+
+            if (smeltProgress >= smeltTotal) {
+                smeltProgress = 0
+                smeltTotal = recipe!!.cookingTime
+                craftResult(recipe, level)
+            }
+        } else if (smeltProgress > 0 && !isHot) {
+            // Cool down if no heat
+            smeltProgress = (smeltProgress - 2).coerceAtLeast(0)
+        }
+
+        setChanged()
+    }
+
+    private fun tryStartFuel(level: ServerLevel) {
+        val fuel = items[FUEL_SLOT]
+        if (fuel.isEmpty) return
+        val burnTime = getFuelBurnTime(level, fuel)
+        if (burnTime <= 0) return
+
+        maxFuelBurnTime = burnTime
+        fuelBurnTimeLeft = burnTime
+
+        val remainder = fuel.recurrenceItem
+        fuel.shrink(1)
+        if (fuel.isEmpty && !remainder.isEmpty) {
+            items[FUEL_SLOT] = remainder
+        }
+    }
+
+    /**
+     * Returns the remaining item after the fuel is consumed (e.g. bucket from lava bucket).
+     * Uses getCraftingRemainingItem() which is the Mojang-mapped name.
+     * If this doesn't compile, try: item.craftingRemainder or item.remainingItem
+     */
+    private val ItemStack.recurrenceItem: ItemStack
+        get() {
+            val template = item.getCraftingRemainder()
+            return template?.create() ?: ItemStack.EMPTY
+        }
+
+    /**
+     * Checks vanilla fuel values, then falls back to custom fuels (slag).
+     * FuelValues is obtained from the MinecraftServer instance.
+     * If your version exposes it directly on Level, use `level.fuelValues()` instead.
+     */
+    private fun getFuelBurnTime(level: ServerLevel, stack: ItemStack): Int {
+        val vanillaTime = level.server!!.fuelValues().burnDuration(stack)
+        if (vanillaTime > 0) return vanillaTime
+        // Custom fuel: slag (800 ticks ≈ wooden plank level)
+        if (stack.`is`(ModItems.SLAG)) return 800
+        return 0
+    }
+
+    private fun canOutput(recipe: FoundryRecipe): Boolean {
+        if (items[INPUT_SLOT].isEmpty) return false
+        val result = recipe.result.create()
+        val outputSlot = items[OUTPUT_SLOT]
+        return when {
+            outputSlot.isEmpty -> true
+            !ItemStack.isSameItemSameComponents(outputSlot, result) -> false
+            else -> outputSlot.count + result.count <= outputSlot.maxStackSize
+        }
+    }
+
+    private fun craftResult(recipe: FoundryRecipe, level: ServerLevel) {
+        val result = recipe.result.create()
+
+        // Consume one input item
+        items[INPUT_SLOT].shrink(1)
+
+        // Main output
+        if (items[OUTPUT_SLOT].isEmpty) {
+            items[OUTPUT_SLOT] = result.copy()
+        } else {
+            items[OUTPUT_SLOT].grow(result.count)
+        }
+
+        // Byproduct: chance to produce one Slag in the byproduct slot
+        if (recipe.byproductChance > 0f && level.random.nextFloat() < recipe.byproductChance) {
+            val slag = ItemStack(ModItems.SLAG)
+            val byproduct = items[BYPRODUCT_SLOT]
+            when {
+                byproduct.isEmpty ->
+                    items[BYPRODUCT_SLOT] = slag
+
+                ItemStack.isSameItemSameComponents(byproduct, slag) &&
+                        byproduct.count < byproduct.maxStackSize ->
+                    byproduct.grow(1)
+            }
+        }
+    }
+
+    // ── Serialisation ─────────────────────────────────────────────────────────
+
+    override fun saveAdditional(output: ValueOutput) {
+        super.saveAdditional(output)
+        ContainerHelper.saveAllItems(output, items)
+        output.putInt("fuel_burn_time_left", fuelBurnTimeLeft)
+        output.putInt("max_fuel_burn_time", maxFuelBurnTime)
+        output.putInt("smelt_progress", smeltProgress)
+        output.putInt("smelt_total", smeltTotal)
+
+        output.putLong("lava_amount", fluidStorage.amount)
+    }
+
+    override fun loadAdditional(input: ValueInput) {
+        super.loadAdditional(input)
+        ContainerHelper.loadAllItems(input, items)
+        fuelBurnTimeLeft = input.getIntOr("fuel_burn_time_left", 0)
+        maxFuelBurnTime = input.getIntOr("max_fuel_burn_time", 0)
+        smeltProgress = input.getIntOr("smelt_progress", 0)
+        smeltTotal = input.getIntOr("smelt_total", DEFAULT_COOK_TIME)
+
+        val savedLava = input.getLongOr("lava_amount", 0L)
+        if (savedLava > 0L) {
+            fluidStorage.variant = FluidVariant.of(Fluids.LAVA)
+            fluidStorage.amount = savedLava.coerceAtMost(LAVA_CAPACITY)
+        }
+    }
+
+    override fun getUpdateTag(registryLookup: HolderLookup.Provider): CompoundTag =
+        saveWithoutMetadata(registryLookup)
+
+    override fun getUpdatePacket(): Packet<ClientGamePacketListener> =
+        ClientboundBlockEntityDataPacket.create(this)
+
+    // ── MenuProvider ──────────────────────────────────────────────────────────
+
+    override fun getDisplayName(): Component =
+        Component.translatable("block.foundry.foundry")
+
+    override fun createMenu(
+        containerId: Int,
+        inventory: Inventory,
+        player: Player
+    ): AbstractContainerMenu =
+        FoundryMenu(containerId, inventory, this, containerData)
+
+    // ── Constants ─────────────────────────────────────────────────────────────
+
+    companion object {
+        const val INPUT_SLOT = 0
+        const val FUEL_SLOT = 1
+        const val OUTPUT_SLOT = 2
+        const val BYPRODUCT_SLOT = 3
+        const val LAVA_BUCKET_SLOT = 4
+        const val INVENTORY_SIZE = 5
+
+        val LAVA_CAPACITY: Long = FluidConstants.BUCKET * 4          // 4-bucket tank
+        const val LAVA_DRAIN_PER_TICK = 2L                           // droplets/tick while boosting
+        const val DEFAULT_COOK_TIME = 200                             // ticks
+
+        @JvmStatic
+        fun tick(level: Level, pos: BlockPos, state: BlockState, entity: FoundryBlockEntity) {
+            if (level.isClientSide) return
+            entity.serverTick(level as ServerLevel)
+        }
+    }
+}
