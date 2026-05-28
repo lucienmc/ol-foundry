@@ -1,0 +1,14 @@
+{
+  "type": "minecraft:crafting_shaped",
+  "pattern": [
+    "SS",
+    "SS"
+  ],
+  "key": {
+    "S": "foundry:slag"
+  },
+  "result": {
+    "id": "foundry:slag_bricks",
+    "count": 4
+  }
+}
