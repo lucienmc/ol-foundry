@@ -21,9 +21,16 @@ class FoundryJeiPlugin : mezz.jei.api.IModPlugin {
     }
 
     override fun registerRecipes(registration: IRecipeRegistration) {
-        // Register a runtime handler that will be called when recipes are needed
-        // This allows us to gather recipes after the recipe manager is initialized
-        FoundryJeiEvents.registerJeiRuntime(registration)
+        // Recipes are gathered asynchronously by FoundryJeiEvents
+        // Add them to JEI as they become available
+        val recipes = FoundryRecipeGatherer.getRecipes()
+        val displays = recipes.map { FoundryRecipeDisplay(it) }
+        if (displays.isNotEmpty()) {
+            registration.addRecipes(FOUNDRY_RECIPE_TYPE, displays)
+        }
+
+        // Note: If recipes are empty at this point, they haven't been discovered yet.
+        // They will be added when FoundryJeiEvents discovers them after the client fully loads.
     }
 
     companion object {
