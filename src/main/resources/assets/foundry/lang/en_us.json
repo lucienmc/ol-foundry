@@ -2,6 +2,8 @@
   "block.foundry.foundry": "Foundry",
   "block.foundry.slag_bricks": "Slag Bricks",
   "item.foundry.slag": "Slag",
-  "itemgroup.foundry.foundry_tab": "Foundry",
+  "item.foundry.foundry": "Foundry",
+  "item.foundry.slag_bricks": "Slag Brick",
+  "creativeTab.foundry": "Foundry",
   "container.foundry.foundry": "Foundry"
 }

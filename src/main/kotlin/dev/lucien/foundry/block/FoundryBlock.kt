@@ -35,18 +35,21 @@ class FoundryBlock(properties: BlockBehaviour.Properties) : BaseEntityBlock(prop
 
     override fun getRenderShape(state: BlockState): RenderShape = RenderShape.MODEL
 
-    /** Right-click with lava bucket → fill the tank (returns empty bucket). */
+    /** Right-click with lava bucket → fill the tank; anything else → open GUI. */
     override fun useItemOn(
         stack: ItemStack, state: BlockState, level: Level, pos: BlockPos,
         player: Player, hand: InteractionHand, hit: BlockHitResult
     ): InteractionResult {
-        if (!stack.`is`(Items.LAVA_BUCKET)) return InteractionResult.PASS
+        // In 26.1.2, PASS from useItemOn does NOT fall through to useWithoutItem,
+        // so we delegate explicitly for non-bucket items.
+        if (!stack.`is`(Items.LAVA_BUCKET)) return useWithoutItem(state, level, pos, player, hit)
         if (level.isClientSide) return InteractionResult.SUCCESS
         val entity = level.getBlockEntity(pos) as? FoundryBlockEntity
             ?: return InteractionResult.PASS
         val lavaVariant = FluidVariant.of(Fluids.LAVA)
         val space = FoundryBlockEntity.LAVA_CAPACITY - entity.fluidStorage.amount
-        if (space < FluidConstants.BUCKET) return InteractionResult.PASS
+        // Return SUCCESS (not PASS) when full so the bucket isn't used as an item
+        if (space < FluidConstants.BUCKET) return InteractionResult.SUCCESS
         Transaction.openOuter().use { tx ->
             entity.fluidStorage.insert(lavaVariant, FluidConstants.BUCKET, tx)
             tx.commit()

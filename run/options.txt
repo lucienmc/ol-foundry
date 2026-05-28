@@ -168,7 +168,7 @@ key_key.debug.fpsCharts:key.keyboard.2
 key_key.debug.networkCharts:key.keyboard.3
 key_key.debug.lightmapTexture:key.keyboard.4
 soundCategory_master:0.47516556291390727
-soundCategory_music:0.04929577464788732
+soundCategory_music:0.12837808098591558
 soundCategory_record:1.0
 soundCategory_weather:1.0
 soundCategory_block:1.0

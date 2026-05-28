@@ -1,8 +1,12 @@
 package dev.lucien.foundry.menu
 
 import dev.lucien.foundry.block.entity.FoundryBlockEntity
+import dev.lucien.foundry.recipe.FoundryRecipeInput
 import dev.lucien.foundry.registry.ModMenuTypes
+import dev.lucien.foundry.registry.ModRecipes
+import net.minecraft.server.level.ServerLevel
 import net.minecraft.world.Container
+import net.minecraft.world.item.crafting.RecipeManager
 import net.minecraft.world.SimpleContainer
 import net.minecraft.world.entity.player.Inventory
 import net.minecraft.world.entity.player.Player
@@ -14,57 +18,75 @@ class FoundryMenu private constructor(
     containerId: Int,
     private val inventory: Inventory,
     private val container: Container,
-    private val data: ContainerData
+    private val data: ContainerData,
+    private val foundry: FoundryBlockEntity?
 ) : AbstractContainerMenu(ModMenuTypes.FOUNDRY, containerId) {
 
-    // ── Client-side constructor (called by MenuType factory) ──────────────────
     constructor(containerId: Int, inventory: Inventory) : this(
-        containerId,
-        inventory,
+        containerId, inventory,
         SimpleContainer(FoundryBlockEntity.INVENTORY_SIZE),
-        SimpleContainerData(5)
+        SimpleContainerData(5),
+        null
     )
 
-    // ── Server-side constructor (called from FoundryBlockEntity.createMenu) ───
     constructor(
         containerId: Int,
         inventory: Inventory,
         blockEntity: FoundryBlockEntity,
         data: ContainerData
-    ) : this(containerId, inventory, blockEntity as Container, data)
+    ) : this(containerId, inventory, blockEntity as Container, data, blockEntity)
 
     init {
         checkContainerSize(container, FoundryBlockEntity.INVENTORY_SIZE)
         container.startOpen(inventory.player)
 
-        // Foundry slots
-        addSlot(Slot(container, FoundryBlockEntity.INPUT_SLOT,     56, 17))   // Input
-        addSlot(Slot(container, FoundryBlockEntity.FUEL_SLOT,      56, 53))   // Fuel
-        addSlot(Slot(container, FoundryBlockEntity.OUTPUT_SLOT,   116, 26)) // Output
-        addSlot(Slot(container, FoundryBlockEntity.BYPRODUCT_SLOT, 116, 50)) // Byproduct (slag)
-        // Lava bucket slot: accepts only lava buckets, stacks of 1
+        addSlot(object : Slot(container, FoundryBlockEntity.INPUT_SLOT, 56, 17) {
+            override fun mayPlace(stack: ItemStack) = isSmeltable(stack)
+        })
+        addSlot(Slot(container, FoundryBlockEntity.FUEL_SLOT, 56, 53))
+        addSlot(object : Slot(container, FoundryBlockEntity.OUTPUT_SLOT, 116, 26) {
+            override fun mayPlace(stack: ItemStack) = false
+            override fun onTake(player: Player, stack: ItemStack) {
+                if (!player.level().isClientSide) foundry?.popExperience(player.level() as ServerLevel)
+                super.onTake(player, stack)
+            }
+        })
+        addSlot(object : Slot(container, FoundryBlockEntity.BYPRODUCT_SLOT, 116, 50) {
+            override fun mayPlace(stack: ItemStack) = false
+        })
         addSlot(object : Slot(container, FoundryBlockEntity.LAVA_BUCKET_SLOT, 151, 59) {
             override fun mayPlace(stack: ItemStack) = stack.`is`(Items.LAVA_BUCKET)
             override fun getMaxStackSize() = 1
         })
 
-        // Player inventory (27 slots + 9 hotbar)
         addStandardInventorySlots(inventory, 8, 84)
-
-        // Sync progress data
         addDataSlots(data)
+    }
+
+    // ── Recipe check ──────────────────────────────────────────────────────────
+
+    private fun isSmeltable(stack: ItemStack): Boolean {
+        val level = inventory.player.level()
+        // RecipeAccess interface lacks getRecipeFor, but the runtime object is always RecipeManager
+        // (Minecraft syncs recipes to the client). Safe-cast; fall back to permissive if it ever fails.
+        val manager = level.recipeAccess() as? RecipeManager ?: return true
+        return manager.getRecipeFor(
+            ModRecipes.FOUNDRY_RECIPE_TYPE,
+            FoundryRecipeInput(stack, false),
+            level
+        ).isPresent
     }
 
     // ── Progress accessors (used by FoundryScreen) ────────────────────────────
 
-    fun getSmeltProgress(): Int    = data.get(0)
-    fun getSmeltTotal(): Int       = data.get(1).coerceAtLeast(1)
-    fun getFuelBurnLeft(): Int     = data.get(2)
-    fun getFuelBurnMax(): Int      = data.get(3).coerceAtLeast(1)
-    fun getLavaPercent(): Int      = data.get(4)   // 0-100
-    fun isBurning(): Boolean       = getFuelBurnLeft() > 0
+    fun getSmeltProgress(): Int = data.get(0)
+    fun getSmeltTotal(): Int    = data.get(1).coerceAtLeast(1)
+    fun getFuelBurnLeft(): Int  = data.get(2)
+    fun getFuelBurnMax(): Int   = data.get(3).coerceAtLeast(1)
+    fun getLavaPercent(): Int   = data.get(4)
+    fun isBurning(): Boolean    = getFuelBurnLeft() > 0
 
-    // ── Shift-click logic ─────────────────────────────────────────────────────
+    // ── Shift-click routing ───────────────────────────────────────────────────
 
     override fun quickMoveStack(player: Player, slotIndex: Int): ItemStack {
         val slot = slots.getOrNull(slotIndex) ?: return ItemStack.EMPTY
@@ -78,36 +100,27 @@ class FoundryMenu private constructor(
 
         if (slotIndex < containerEnd) {
             // Container → player inventory
-            if (!moveItemStackTo(stack, containerEnd, inventoryEnd, true)) {
-                return ItemStack.EMPTY
-            }
+            if (!moveItemStackTo(stack, containerEnd, inventoryEnd, true)) return ItemStack.EMPTY
         } else {
-            // Player inventory → container: lava bucket → bucket slot; then input; then fuel
-            val movedToBucket = stack.`is`(Items.LAVA_BUCKET) &&
-                moveItemStackTo(stack, FoundryBlockEntity.LAVA_BUCKET_SLOT, FoundryBlockEntity.LAVA_BUCKET_SLOT + 1, false)
-            if (!movedToBucket) {
-                if (!moveItemStackTo(stack, FoundryBlockEntity.INPUT_SLOT, FoundryBlockEntity.INPUT_SLOT + 1, false)) {
-                    if (!moveItemStackTo(stack, FoundryBlockEntity.FUEL_SLOT, FoundryBlockEntity.FUEL_SLOT + 1, false)) {
-                        return ItemStack.EMPTY
-                    }
-                }
+            // Player inventory → container: route explicitly by item type
+            val moved = when {
+                stack.`is`(Items.LAVA_BUCKET) ->
+                    moveItemStackTo(stack, FoundryBlockEntity.LAVA_BUCKET_SLOT, FoundryBlockEntity.LAVA_BUCKET_SLOT + 1, false)
+                isSmeltable(stack) ->
+                    moveItemStackTo(stack, FoundryBlockEntity.INPUT_SLOT, FoundryBlockEntity.INPUT_SLOT + 1, false)
+                else ->
+                    moveItemStackTo(stack, FoundryBlockEntity.FUEL_SLOT, FoundryBlockEntity.FUEL_SLOT + 1, false)
             }
+            if (!moved) return ItemStack.EMPTY
         }
 
-        if (stack.isEmpty) {
-            slot.setByPlayer(ItemStack.EMPTY)
-        } else {
-            slot.setChanged()
-        }
-
+        if (stack.isEmpty) slot.setByPlayer(ItemStack.EMPTY) else slot.setChanged()
         if (stack.count == original.count) return ItemStack.EMPTY
         slot.onTake(player, stack)
-
         return original
     }
 
-    override fun stillValid(player: Player): Boolean =
-        container.stillValid(player)
+    override fun stillValid(player: Player): Boolean = container.stillValid(player)
 
     override fun removed(player: Player) {
         super.removed(player)

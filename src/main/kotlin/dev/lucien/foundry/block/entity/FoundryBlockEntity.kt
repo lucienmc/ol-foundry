@@ -21,6 +21,8 @@ import net.minecraft.network.protocol.game.ClientGamePacketListener
 import net.minecraft.network.protocol.game.ClientboundBlockEntityDataPacket
 import net.minecraft.server.level.ServerLevel
 import net.minecraft.world.ContainerHelper
+import net.minecraft.world.entity.ExperienceOrb
+import net.minecraft.world.phys.Vec3
 import net.minecraft.world.MenuProvider
 import net.minecraft.world.entity.player.Inventory
 import net.minecraft.world.entity.player.Player
@@ -88,6 +90,9 @@ class FoundryBlockEntity(pos: BlockPos, state: BlockState) :
     /** Total ticks needed to complete the current recipe (may vary by recipe) */
     var smeltTotal: Int = DEFAULT_COOK_TIME
 
+    /** Fractional XP banked from completed recipes; awarded when player takes output */
+    var storedXp: Float = 0f
+
     // ── ContainerData (synced to client for progress bars) ────────────────────
 
     val containerData: ContainerData = object : ContainerData {
@@ -148,12 +153,14 @@ class FoundryBlockEntity(pos: BlockPos, state: BlockState) :
         if (isHot) fuelBurnTimeLeft--
 
         if (isHot && canSmelt) {
-            // Speed multiplier: +1x when lava tank has fluid
+            // Sync cooking time to the current recipe when starting a fresh item
+            if (smeltProgress == 0) smeltTotal = recipe!!.cookingTime
+
+            // Base 2× speed (blast-furnace parity); lava doubles it again to 4×
             val hasLavaBoost = fluidStorage.amount > 0L
-            val speedMultiplier = if (hasLavaBoost) 2 else 1
+            val speedMultiplier = if (hasLavaBoost) 4 else 2
             smeltProgress += speedMultiplier
 
-            // Drain lava proportional to speed bonus used
             if (hasLavaBoost) {
                 Transaction.openOuter().use { tx ->
                     fluidStorage.extract(FluidVariant.of(Fluids.LAVA), LAVA_DRAIN_PER_TICK, tx)
@@ -163,7 +170,6 @@ class FoundryBlockEntity(pos: BlockPos, state: BlockState) :
 
             if (smeltProgress >= smeltTotal) {
                 smeltProgress = 0
-                smeltTotal = recipe!!.cookingTime
                 craftResult(recipe, level)
             }
         } else if (smeltProgress > 0 && !isHot) {
@@ -218,11 +224,26 @@ class FoundryBlockEntity(pos: BlockPos, state: BlockState) :
         if (items[INPUT_SLOT].isEmpty) return false
         val result = recipe.result.create()
         val outputSlot = items[OUTPUT_SLOT]
-        return when {
+        val canFitOutput = when {
             outputSlot.isEmpty -> true
             !ItemStack.isSameItemSameComponents(outputSlot, result) -> false
             else -> outputSlot.count + result.count <= outputSlot.maxStackSize
         }
+        if (!canFitOutput) return false
+
+        if (recipe.byproductChance > 0f) {
+            val minSlag = recipe.byproductChance.toInt().coerceAtLeast(1)
+            val byproduct = items[BYPRODUCT_SLOT]
+            val slag = ItemStack(ModItems.SLAG)
+            val canFitByproduct = when {
+                byproduct.isEmpty -> true
+                !ItemStack.isSameItemSameComponents(byproduct, slag) -> false
+                else -> byproduct.count + minSlag <= byproduct.maxStackSize
+            }
+            if (!canFitByproduct) return false
+        }
+
+        return true
     }
 
     private fun craftResult(recipe: FoundryRecipe, level: ServerLevel) {
@@ -238,19 +259,37 @@ class FoundryBlockEntity(pos: BlockPos, state: BlockState) :
             items[OUTPUT_SLOT].grow(result.count)
         }
 
-        // Byproduct: chance to produce one Slag in the byproduct slot
-        if (recipe.byproductChance > 0f && level.random.nextFloat() < recipe.byproductChance) {
-            val slag = ItemStack(ModItems.SLAG)
-            val byproduct = items[BYPRODUCT_SLOT]
-            when {
-                byproduct.isEmpty ->
-                    items[BYPRODUCT_SLOT] = slag
+        storedXp += recipe.experience
 
-                ItemStack.isSameItemSameComponents(byproduct, slag) &&
-                        byproduct.count < byproduct.maxStackSize ->
-                    byproduct.grow(1)
+        // Byproduct: floor(chance) guaranteed slag + fractional probability for one more.
+        // Allows byproductChance > 1 for bulk recipes (e.g. ore blocks = 9× single-ore chance).
+        if (recipe.byproductChance > 0f) {
+            val guaranteed = recipe.byproductChance.toInt()
+            val fraction = recipe.byproductChance - guaranteed
+            val count = guaranteed + if (fraction > 0f && level.random.nextFloat() < fraction) 1 else 0
+            if (count > 0) {
+                val slag = ItemStack(ModItems.SLAG)
+                val byproduct = items[BYPRODUCT_SLOT]
+                when {
+                    byproduct.isEmpty ->
+                        items[BYPRODUCT_SLOT] = ItemStack(ModItems.SLAG, count)
+                    ItemStack.isSameItemSameComponents(byproduct, slag) &&
+                            byproduct.count + count <= byproduct.maxStackSize ->
+                        byproduct.grow(count)
+                }
             }
         }
+    }
+
+    // ── Experience ────────────────────────────────────────────────────────────
+
+    /** Spawn XP orbs at the block for all banked experience. Called when player takes output. */
+    fun popExperience(serverLevel: ServerLevel) {
+        val whole = storedXp.toInt()
+        val frac = storedXp - whole
+        val total = whole + if (serverLevel.random.nextFloat() < frac) 1 else 0
+        storedXp = 0f
+        if (total > 0) ExperienceOrb.award(serverLevel, Vec3.atCenterOf(blockPos), total)
     }
 
     // ── Serialisation ─────────────────────────────────────────────────────────
@@ -262,7 +301,7 @@ class FoundryBlockEntity(pos: BlockPos, state: BlockState) :
         output.putInt("max_fuel_burn_time", maxFuelBurnTime)
         output.putInt("smelt_progress", smeltProgress)
         output.putInt("smelt_total", smeltTotal)
-
+        output.putFloat("stored_xp", storedXp)
         output.putLong("lava_amount", fluidStorage.amount)
     }
 
@@ -273,7 +312,7 @@ class FoundryBlockEntity(pos: BlockPos, state: BlockState) :
         maxFuelBurnTime = input.getIntOr("max_fuel_burn_time", 0)
         smeltProgress = input.getIntOr("smelt_progress", 0)
         smeltTotal = input.getIntOr("smelt_total", DEFAULT_COOK_TIME)
-
+        storedXp = input.getFloatOr("stored_xp", 0f)
         val savedLava = input.getLongOr("lava_amount", 0L)
         if (savedLava > 0L) {
             fluidStorage.variant = FluidVariant.of(Fluids.LAVA)
@@ -310,7 +349,7 @@ class FoundryBlockEntity(pos: BlockPos, state: BlockState) :
         const val INVENTORY_SIZE = 5
 
         val LAVA_CAPACITY: Long = FluidConstants.BUCKET * 4          // 4-bucket tank
-        const val LAVA_DRAIN_PER_TICK = 2L                           // droplets/tick while boosting
+        val LAVA_DRAIN_PER_TICK: Long = FluidConstants.BUCKET / 1600 // ~0.025 bucket per boosted recipe
         const val DEFAULT_COOK_TIME = 200                             // ticks
 
         @JvmStatic
