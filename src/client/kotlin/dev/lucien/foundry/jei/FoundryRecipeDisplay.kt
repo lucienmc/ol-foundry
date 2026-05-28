@@ -1,6 +1,7 @@
 package dev.lucien.foundry.jei
 
 import dev.lucien.foundry.recipe.FoundryRecipe
+import dev.lucien.foundry.registry.ModItems
 import net.minecraft.world.item.ItemStack
 import net.minecraft.world.item.crafting.Ingredient
 
@@ -17,8 +18,14 @@ data class FoundryRecipeDisplay(
     val output: ItemStack
         get() = recipe.result.create()
 
+    val byproduct: ItemStack
+        get() = ItemStack(ModItems.SLAG)
+
     val byproductChance: Float
         get() = recipe.byproductChance
+
+    val byproductChancePercent: String
+        get() = "${(byproductChance * 100).toInt()}%"
 
     val cookingTime: Int
         get() = recipe.cookingTime

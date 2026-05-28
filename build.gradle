@@ -9,6 +9,9 @@ group = project.maven_group
 
 repositories {
     // Add repositories to retrieve artifacts from in here.
+    maven {
+        url = "https://maven.blamejared.com"
+    }
 }
 
 loom {
@@ -34,6 +37,10 @@ dependencies {
 
     // Fabric API
     implementation "net.fabricmc.fabric-api:fabric-api:${project.fabric_api_version}"
+
+    // JEI
+    compileOnly "mezz.jei:jei-${project.minecraft_version}-fabric-api:${jei_version}"
+    runtimeOnly "mezz.jei:jei-${project.minecraft_version}-fabric:${jei_version}"
 }
 
 processResources {

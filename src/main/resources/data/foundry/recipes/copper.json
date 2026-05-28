@@ -1,11 +1,8 @@
 {
   "type": "foundry:foundry_smelting",
-  "ingredient": {
-    "item": "minecraft:copper_ore"
-  },
-  "result": {
-    "item": "minecraft:raw_copper"
-  },
-  "cooking_time": 180,
-  "experience": 0.5
+  "ingredient": "minecraft:copper_ore",
+  "result": { "id": "minecraft:copper_ingot" },
+  "byproduct_chance": 0.30,
+  "cooking_time": 150,
+  "experience": 0.7
 }

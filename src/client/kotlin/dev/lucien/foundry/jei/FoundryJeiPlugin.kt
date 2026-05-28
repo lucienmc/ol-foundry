@@ -11,11 +11,6 @@ import net.minecraft.resources.Identifier
 @JeiPlugin
 class FoundryJeiPlugin : mezz.jei.api.IModPlugin {
 
-    init {
-        // Initialize recipe gatherer on client startup
-        FoundryRecipeGatherer.init()
-    }
-
     override fun getPluginUid(): Identifier =
         Identifier.fromNamespaceAndPath(Foundry.MOD_ID, "jei_plugin")
 
@@ -26,10 +21,9 @@ class FoundryJeiPlugin : mezz.jei.api.IModPlugin {
     }
 
     override fun registerRecipes(registration: IRecipeRegistration) {
-        // Get recipes from the gatherer
-        val recipes = FoundryRecipeGatherer.getRecipes()
-        val displays = recipes.map { FoundryRecipeDisplay(it) }
-        registration.addRecipes(FOUNDRY_RECIPE_TYPE, displays)
+        // Register a runtime handler that will be called when recipes are needed
+        // This allows us to gather recipes after the recipe manager is initialized
+        FoundryJeiEvents.registerJeiRuntime(registration)
     }
 
     companion object {

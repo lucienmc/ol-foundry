@@ -1,8 +1,0 @@
-{
-  "type": "foundry:foundry_smelting",
-  "ingredient": "minecraft:raw_gold",
-  "result": { "id": "minecraft:gold_ingot" },
-  "byproduct_chance": 0.35,
-  "cooking_time": 160,
-  "experience": 1.0
-}

@@ -17,7 +17,7 @@ import net.minecraft.world.item.Items
 class FoundryRecipeCategory(guiHelper: IGuiHelper) : IRecipeCategory<FoundryRecipeDisplay> {
 
     private val icon = ItemStack(ModBlocks.FOUNDRY)
-    private val background = guiHelper.createBlankDrawable(160, 80)
+    private val background = guiHelper.createBlankDrawable(160, 90)
 
     override fun getRecipeType(): RecipeType<FoundryRecipeDisplay> =
         FoundryJeiPlugin.FOUNDRY_RECIPE_TYPE
@@ -27,7 +27,7 @@ class FoundryRecipeCategory(guiHelper: IGuiHelper) : IRecipeCategory<FoundryReci
 
     override fun getWidth(): Int = 160
 
-    override fun getHeight(): Int = 80
+    override fun getHeight(): Int = 90
 
     override fun getIcon(): mezz.jei.api.gui.drawable.IDrawable? =
         null
@@ -41,9 +41,15 @@ class FoundryRecipeCategory(guiHelper: IGuiHelper) : IRecipeCategory<FoundryReci
         builder.addInputSlot(10, 30)
             .addIngredients(display.ingredient)
 
-        // Output slot
+        // Primary output slot
         builder.addOutputSlot(140, 30)
             .addItemStack(display.output)
+
+        // Byproduct (slag) slot - shows with chance percentage
+        if (display.byproductChance > 0) {
+            builder.addOutputSlot(140, 50)
+                .addItemStack(display.byproduct)
+        }
     }
 
     override fun draw(

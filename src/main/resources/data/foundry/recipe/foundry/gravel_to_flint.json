@@ -1,8 +1,0 @@
-{
-  "type": "foundry:foundry_smelting",
-  "ingredient": "minecraft:gravel",
-  "result": { "id": "minecraft:flint" },
-  "byproduct_chance": 0.0,
-  "cooking_time": 120,
-  "experience": 0.1
-}
