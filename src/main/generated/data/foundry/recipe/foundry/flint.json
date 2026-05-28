@@ -1,0 +1,8 @@
+{
+  "type": "foundry:foundry_smelting",
+  "cooking_time": 120,
+  "ingredient": "minecraft:gravel",
+  "result": {
+    "id": "minecraft:flint"
+  }
+}

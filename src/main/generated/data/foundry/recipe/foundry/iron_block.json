@@ -1,0 +1,10 @@
+{
+  "type": "foundry:foundry_smelting",
+  "byproduct_chance": 3.15,
+  "cooking_time": 1200,
+  "experience": 6.3,
+  "ingredient": "minecraft:raw_iron_block",
+  "result": {
+    "id": "minecraft:iron_block"
+  }
+}

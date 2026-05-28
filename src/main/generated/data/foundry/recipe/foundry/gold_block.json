@@ -1,0 +1,10 @@
+{
+  "type": "foundry:foundry_smelting",
+  "byproduct_chance": 3.15,
+  "cooking_time": 1200,
+  "experience": 9.0,
+  "ingredient": "minecraft:raw_gold_block",
+  "result": {
+    "id": "minecraft:gold_block"
+  }
+}

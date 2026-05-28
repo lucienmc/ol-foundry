@@ -1,0 +1,17 @@
+{
+  "type": "minecraft:crafting_shaped",
+  "category": "misc",
+  "key": {
+    "B": "minecraft:blast_furnace",
+    "R": "minecraft:redstone_block",
+    "S": "minecraft:smooth_stone"
+  },
+  "pattern": [
+    "SRS",
+    "RBR",
+    "SRS"
+  ],
+  "result": {
+    "id": "foundry:foundry"
+  }
+}

@@ -1,0 +1,7 @@
+{
+  "type": "foundry:foundry_smelting",
+  "ingredient": "minecraft:sand",
+  "result": {
+    "id": "minecraft:glass"
+  }
+}

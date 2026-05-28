@@ -19,6 +19,9 @@
     ],
     "client": [
       "dev.lucien.foundry.FoundryClient"
+    ],
+    "fabric-datagen": [
+      "dev.lucien.foundry.datagen.FoundryDatagen"
     ]
   },
   "mixins": [

@@ -1,8 +1,0 @@
-{
-  "type": "foundry:foundry_smelting",
-  "ingredient": "minecraft:red_sand",
-  "result": { "id": "minecraft:glass" },
-  "byproduct_chance": 0.0,
-  "cooking_time": 200,
-  "experience": 0.1
-}

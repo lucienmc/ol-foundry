@@ -1,8 +1,0 @@
-{
-  "type": "foundry:foundry_smelting",
-  "ingredient": "minecraft:raw_copper_block",
-  "result": { "id": "minecraft:copper_block" },
-  "byproduct_chance": 2.70,
-  "cooking_time": 1200,
-  "experience": 6.3
-}
