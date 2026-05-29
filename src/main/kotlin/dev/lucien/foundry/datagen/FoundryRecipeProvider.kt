@@ -20,6 +20,10 @@ import net.minecraft.world.item.Items
 import net.minecraft.world.item.crafting.Ingredient
 import java.util.concurrent.CompletableFuture
 
+private data class BonusConfig(val chance: Float = 0.0f, val requiresLava: Boolean = false) {
+    companion object { val NONE = BonusConfig() }
+}
+
 /**
  * Registered as a FabricRecipeProvider.Runner via FoundryDatagen.
  * Delegates to the inner RecipeProvider which has access to the items HolderGetter.
@@ -111,7 +115,7 @@ class FoundryRecipeProvider(
             smelt(
                 "netherite_scrap", Items.ANCIENT_DEBRIS, Items.NETHERITE_SCRAP,
                 byproductChance = 0.0f, cookingTime = 400, experience = 2.0f,
-                bonusResultChance = 0.5f, bonusRequiresLava = true
+                bonus = BonusConfig(0.5f, requiresLava = true)
             )
         }
 
@@ -122,8 +126,7 @@ class FoundryRecipeProvider(
             byproductChance: Float,
             cookingTime: Int,
             experience: Float,
-            bonusResultChance: Float = 0.0f,
-            bonusRequiresLava: Boolean = false,
+            bonus: BonusConfig = BonusConfig.NONE,
         ) {
             val key = ResourceKey.create(
                 Registries.RECIPE,
@@ -137,8 +140,8 @@ class FoundryRecipeProvider(
                     byproductChance = byproductChance,
                     cookingTime = cookingTime,
                     experience = experience,
-                    bonusResultChance = bonusResultChance,
-                    bonusRequiresLava = bonusRequiresLava,
+                    bonusResultChance = bonus.chance,
+                    bonusRequiresLava = bonus.requiresLava,
                 ),
                 null,
             )

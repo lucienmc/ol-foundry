@@ -26,7 +26,7 @@ loom {
 
     runs {
         client {
-            programArgs "--quickPlaySingleplayer", "New World"
+            programArgs "--quickPlaySingleplayer", "New World", "--username", "Lucien"
         }
         datagen {
             inherit server
