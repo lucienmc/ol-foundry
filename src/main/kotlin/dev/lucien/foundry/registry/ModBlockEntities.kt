@@ -20,7 +20,7 @@ object ModBlockEntities {
     fun init() {
         // Expose the fluid tank to pipes on all sides
         FluidStorage.SIDED.registerForBlockEntity(
-            { entity, _ -> entity.fluidStorage },
+            { entity, _ -> entity.lava.storage },
             FOUNDRY
         )
     }

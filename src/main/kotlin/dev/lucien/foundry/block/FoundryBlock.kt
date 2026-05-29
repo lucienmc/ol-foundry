@@ -2,7 +2,10 @@ package dev.lucien.foundry.block
 
 import com.mojang.serialization.MapCodec
 import dev.lucien.foundry.block.entity.FoundryBlockEntity
+import dev.lucien.foundry.block.entity.FoundryLavaTank
+import dev.lucien.foundry.item.LavaStorageComponent
 import dev.lucien.foundry.registry.ModBlockEntities
+import dev.lucien.foundry.registry.ModDataComponents
 import net.fabricmc.fabric.api.transfer.v1.fluid.FluidConstants
 import net.fabricmc.fabric.api.transfer.v1.fluid.FluidVariant
 import net.fabricmc.fabric.api.transfer.v1.transaction.Transaction
@@ -23,7 +26,6 @@ import net.minecraft.world.level.block.RenderShape
 import net.minecraft.world.level.block.entity.BlockEntity
 import net.minecraft.world.level.block.entity.BlockEntityTicker
 import net.minecraft.world.level.block.entity.BlockEntityType
-import net.minecraft.world.level.block.state.BlockBehaviour
 import net.minecraft.world.level.block.state.BlockState
 import net.minecraft.world.level.block.state.StateDefinition
 import net.minecraft.world.level.block.state.properties.BlockStateProperties
@@ -31,7 +33,7 @@ import net.minecraft.world.level.block.state.properties.EnumProperty
 import net.minecraft.world.level.material.Fluids
 import net.minecraft.world.phys.BlockHitResult
 
-class FoundryBlock(properties: BlockBehaviour.Properties) : BaseEntityBlock(properties) {
+class FoundryBlock(properties: Properties) : BaseEntityBlock(properties) {
 
     companion object {
         val FACING: EnumProperty<Direction> = BlockStateProperties.HORIZONTAL_FACING
@@ -58,18 +60,23 @@ class FoundryBlock(properties: BlockBehaviour.Properties) : BaseEntityBlock(prop
 
     /** Right-click with lava bucket → fill the tank; anything else → open GUI. */
     override fun useItemOn(
-        stack: ItemStack, state: BlockState, level: Level, pos: BlockPos,
-        player: Player, hand: InteractionHand, hit: BlockHitResult
+        stack: ItemStack,
+        state: BlockState,
+        level: Level,
+        pos: BlockPos,
+        player: Player,
+        hand: InteractionHand,
+        hit: BlockHitResult
     ): InteractionResult {
         if (!stack.`is`(Items.LAVA_BUCKET)) return useWithoutItem(state, level, pos, player, hit)
         if (level.isClientSide) return InteractionResult.SUCCESS
-        val entity = level.getBlockEntity(pos) as? FoundryBlockEntity
-            ?: return InteractionResult.PASS
+        val entity =
+            level.getBlockEntity(pos) as? FoundryBlockEntity ?: return InteractionResult.PASS
         val lavaVariant = FluidVariant.of(Fluids.LAVA)
-        val space = FoundryBlockEntity.LAVA_CAPACITY - entity.fluidStorage.amount
+        val space = FoundryLavaTank.CAPACITY - entity.lava.storage.amount
         if (space < FluidConstants.BUCKET) return InteractionResult.SUCCESS
         Transaction.openOuter().use { tx ->
-            entity.fluidStorage.insert(lavaVariant, FluidConstants.BUCKET, tx)
+            entity.lava.storage.insert(lavaVariant, FluidConstants.BUCKET, tx)
             tx.commit()
         }
         if (!player.isCreative) {
@@ -95,7 +102,7 @@ class FoundryBlock(properties: BlockBehaviour.Properties) : BaseEntityBlock(prop
         level: Level, state: BlockState, type: BlockEntityType<T>
     ): BlockEntityTicker<T>? = createTickerHelper(
         type, ModBlockEntities.FOUNDRY
-    ) { lvl, pos, st, entity -> FoundryBlockEntity.tick(lvl, pos, st, entity) }
+    ) { lvl, _, _, entity -> FoundryBlockEntity.tick(lvl, entity) }
 
     /**
      * Drop inventory contents on block removal (pistons, explosions, etc.).
@@ -121,15 +128,9 @@ class FoundryBlock(properties: BlockBehaviour.Properties) : BaseEntityBlock(prop
     ): BlockState {
         if (!level.isClientSide && player.isCreative) {
             val entity = level.getBlockEntity(pos) as? FoundryBlockEntity
-            if (entity != null && entity.fluidStorage.amount > 0L) {
+            if (entity != null && entity.lava.hasLava) {
                 val stack = ItemStack(asItem())
-                // Store the lava amount in custom data component so it shows in the item tooltip
-                val mb = (entity.fluidStorage.amount / 81L).toInt()
-                val tag = net.minecraft.nbt.CompoundTag().apply { putInt("LavaAmount", mb) }
-                stack.set(
-                    net.minecraft.core.component.DataComponents.CUSTOM_DATA,
-                    net.minecraft.world.item.component.CustomData.of(tag)
-                )
+                stack.set(ModDataComponents.LAVA_STORAGE, LavaStorageComponent(entity.lava.mb))
                 Containers.dropItemStack(
                     level,
                     pos.x.toDouble() + 0.5,

@@ -7,10 +7,6 @@ import dev.lucien.foundry.registry.ModBlockEntities
 import dev.lucien.foundry.registry.ModItems
 import dev.lucien.foundry.registry.ModRecipes
 import dev.lucien.foundry.util.ImplementedContainer
-import net.fabricmc.fabric.api.transfer.v1.fluid.FluidConstants
-import net.fabricmc.fabric.api.transfer.v1.fluid.FluidVariant
-import net.fabricmc.fabric.api.transfer.v1.storage.base.SingleVariantStorage
-import net.fabricmc.fabric.api.transfer.v1.transaction.Transaction
 import net.minecraft.core.BlockPos
 import net.minecraft.core.HolderLookup
 import net.minecraft.core.NonNullList
@@ -29,11 +25,9 @@ import net.minecraft.world.entity.player.Player
 import net.minecraft.world.inventory.AbstractContainerMenu
 import net.minecraft.world.inventory.ContainerData
 import net.minecraft.world.item.ItemStack
-import net.minecraft.world.item.Items
 import net.minecraft.world.level.Level
 import net.minecraft.world.level.block.entity.BlockEntity
 import net.minecraft.world.level.block.state.BlockState
-import net.minecraft.world.level.material.Fluids
 import net.minecraft.world.level.storage.ValueInput
 import net.minecraft.world.level.storage.ValueOutput
 import net.minecraft.world.phys.Vec3
@@ -53,23 +47,8 @@ class FoundryBlockEntity(pos: BlockPos, blockState: BlockState) :
 
     // ── Fluid Tank ────────────────────────────────────────────────────────────
 
-    /**
-     * Lava storage tank (capacity: 4 buckets).
-     * Exposed to pipes via Fabric Transfer API (see ModBlockEntities).
-     */
-    val fluidStorage = object : SingleVariantStorage<FluidVariant>() {
-        override fun getBlankVariant(): FluidVariant = FluidVariant.blank()
-
-        override fun getCapacity(variant: FluidVariant): Long = LAVA_CAPACITY
-
-        override fun canInsert(variant: FluidVariant): Boolean = variant.fluid == Fluids.LAVA
-
-        override fun canExtract(variant: FluidVariant): Boolean = true
-
-        override fun onFinalCommit() {
-            setChanged()
-        }
-    }
+    /** Lava storage tank (capacity: 4 buckets). Exposed to pipes via [ModBlockEntities]. */
+    val lava = FoundryLavaTank { setChanged() }
 
     // ── Smelting State ────────────────────────────────────────────────────────
 
@@ -83,9 +62,8 @@ class FoundryBlockEntity(pos: BlockPos, blockState: BlockState) :
             1 -> state.smeltTotal
             2 -> state.fuelBurnTimeLeft.coerceAtMost(Short.MAX_VALUE.toInt())
             3 -> state.maxFuelBurnTime.coerceAtMost(Short.MAX_VALUE.toInt())
-            4 -> if (fluidStorage.amount > 0L) ((fluidStorage.amount * 100L) / LAVA_CAPACITY).toInt() else 0
-            // slot 5: lava in millibuckets (81 droplets = 1 mB); max 4000 mB, fits in Int
-            5 -> (fluidStorage.amount / 81L).toInt()
+            4 -> lava.percent
+            5 -> lava.mb
             else -> 0
         }
 
@@ -108,7 +86,7 @@ class FoundryBlockEntity(pos: BlockPos, blockState: BlockState) :
         processBucketSlot()
 
         val inputStack = items[INPUT_SLOT]
-        val recipeInput = FoundryRecipeInput(inputStack, fluidStorage.amount > 0L)
+        val recipeInput = FoundryRecipeInput(inputStack, lava.hasLava)
 
         val recipeHolder =
             level.recipeAccess().getRecipeFor(ModRecipes.FOUNDRY_RECIPE_TYPE, recipeInput, level)
@@ -118,15 +96,7 @@ class FoundryBlockEntity(pos: BlockPos, blockState: BlockState) :
     }
 
     private fun processBucketSlot() {
-        val bucketStack = items[LAVA_BUCKET_SLOT]
-        if (bucketStack.isEmpty || !bucketStack.`is`(Items.LAVA_BUCKET)) return
-        val space = LAVA_CAPACITY - fluidStorage.amount
-        if (space < FluidConstants.BUCKET) return
-        Transaction.openOuter().use { tx ->
-            fluidStorage.insert(FluidVariant.of(Fluids.LAVA), FluidConstants.BUCKET, tx)
-            tx.commit()
-        }
-        items[LAVA_BUCKET_SLOT] = ItemStack(Items.BUCKET)
+        lava.tryConsumeBucket(items[LAVA_BUCKET_SLOT])?.let { items[LAVA_BUCKET_SLOT] = it }
     }
 
     private fun tickProgress(recipe: FoundryRecipe?, level: ServerLevel): Boolean {
@@ -147,15 +117,9 @@ class FoundryBlockEntity(pos: BlockPos, blockState: BlockState) :
         if (!canSmelt) return true
 
         if (state.smeltProgress == 0) state.smeltTotal = smelting.cookingTime
-        val hasLavaBoost = fluidStorage.amount > 0L
+        val hasLavaBoost = lava.hasLava
         state.smeltProgress += if (hasLavaBoost) 4 else 2
-
-        if (hasLavaBoost) {
-            Transaction.openOuter().use { tx ->
-                fluidStorage.extract(FluidVariant.of(Fluids.LAVA), LAVA_DRAIN_PER_TICK, tx)
-                tx.commit()
-            }
-        }
+        if (hasLavaBoost) lava.drainForBoost()
 
         if (state.smeltProgress >= state.smeltTotal) {
             state.smeltProgress = 0
@@ -173,7 +137,7 @@ class FoundryBlockEntity(pos: BlockPos, blockState: BlockState) :
         state.maxFuelBurnTime = burnTime
         state.fuelBurnTimeLeft = burnTime
 
-        val remainder = fuel.item.getCraftingRemainder()?.create() ?: ItemStack.EMPTY
+        val remainder = fuel.item.craftingRemainder?.create() ?: ItemStack.EMPTY
         fuel.shrink(1)
         if (fuel.isEmpty && !remainder.isEmpty) {
             items[FUEL_SLOT] = remainder
@@ -186,10 +150,10 @@ class FoundryBlockEntity(pos: BlockPos, blockState: BlockState) :
      * If your version exposes it directly on Level, use `level.fuelValues()` instead.
      */
     private fun getFuelBurnTime(level: ServerLevel, stack: ItemStack): Int {
-        val vanillaTime = level.server!!.fuelValues().burnDuration(stack)
+        val vanillaTime = level.server.fuelValues().burnDuration(stack)
         if (vanillaTime > 0) return vanillaTime
-        // Custom fuel: slag (800 ticks ≈ wooden plank level)
         if (stack.`is`(ModItems.SLAG)) return 800
+
         return 0
     }
 
@@ -216,8 +180,7 @@ class FoundryBlockEntity(pos: BlockPos, blockState: BlockState) :
                 }
 
                 ItemStack.isSameItemSameComponents(
-                    slot,
-                    item
+                    slot, item
                 ) && slot.count + item.count <= slot.maxStackSize -> {
                     slot.grow(item.count); return true
                 }
@@ -232,8 +195,7 @@ class FoundryBlockEntity(pos: BlockPos, blockState: BlockState) :
 
         // At least one of the three output slots must be able to accept the result
         val canFitOutput = canFitInSlot(OUTPUT_SLOT, result) || canFitInSlot(
-            OUTPUT_SLOT_2,
-            result
+            OUTPUT_SLOT_2, result
         ) || canFitInSlot(OUTPUT_SLOT_3, result)
         if (!canFitOutput) return false
 
@@ -259,10 +221,9 @@ class FoundryBlockEntity(pos: BlockPos, blockState: BlockState) :
 
         // Bonus result (e.g. extra netherite scrap when lava is present)
         if (recipe.bonusResultChance > 0f) {
-            val hasLava = fluidStorage.amount > 0L
-            if ((!recipe.bonusRequiresLava || hasLava) && level.random.nextFloat() < recipe.bonusResultChance) {
-                addToOutputSlots(result.copy())
-            }
+            val lavaPreconditionMet = !recipe.bonusRequiresLava || lava.hasLava
+            val bonusRolled = level.random.nextFloat() < recipe.bonusResultChance
+            if (lavaPreconditionMet && bonusRolled) addToOutputSlots(result.copy())
         }
 
         // Byproduct: floor(chance) guaranteed slag + fractional roll for one more.
@@ -279,8 +240,7 @@ class FoundryBlockEntity(pos: BlockPos, blockState: BlockState) :
                     byproduct.isEmpty -> items[BYPRODUCT_SLOT] = ItemStack(ModItems.SLAG, count)
 
                     ItemStack.isSameItemSameComponents(
-                        byproduct,
-                        slag
+                        byproduct, slag
                     ) && byproduct.count + count <= byproduct.maxStackSize -> byproduct.grow(count)
                 }
             }
@@ -304,18 +264,14 @@ class FoundryBlockEntity(pos: BlockPos, blockState: BlockState) :
         super.saveAdditional(output)
         ContainerHelper.saveAllItems(output, items)
         state.save(output)
-        output.putLong("lava_amount", fluidStorage.amount)
+        lava.save(output)
     }
 
     override fun loadAdditional(input: ValueInput) {
         super.loadAdditional(input)
         ContainerHelper.loadAllItems(input, items)
         state.load(input)
-        val savedLava = input.getLongOr("lava_amount", 0L)
-        if (savedLava > 0L) {
-            fluidStorage.variant = FluidVariant.of(Fluids.LAVA)
-            fluidStorage.amount = savedLava.coerceAtMost(LAVA_CAPACITY)
-        }
+        lava.load(input)
     }
 
     override fun getUpdateTag(registryLookup: HolderLookup.Provider): CompoundTag =
@@ -344,12 +300,8 @@ class FoundryBlockEntity(pos: BlockPos, blockState: BlockState) :
         const val LAVA_BUCKET_SLOT = 6
         const val INVENTORY_SIZE = 7
 
-        const val LAVA_CAPACITY: Long = FluidConstants.BUCKET * 4          // 4-bucket tank
-        const val LAVA_DRAIN_PER_TICK: Long =
-            FluidConstants.BUCKET / 1600 // ~0.025 bucket per boosted recipe
-
         @JvmStatic
-        fun tick(level: Level, pos: BlockPos, state: BlockState, entity: FoundryBlockEntity) {
+        fun tick(level: Level, entity: FoundryBlockEntity) {
             if (level.isClientSide) return
             entity.serverTick(level as ServerLevel)
         }

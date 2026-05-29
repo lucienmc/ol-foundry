@@ -11,6 +11,7 @@ class Foundry : ModInitializer {
     }
 
     override fun onInitialize() {
+        ModDataComponents.init()
         ModBlocks.init()
         ModItems.init()
         ModBlockEntities.init()

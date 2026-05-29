@@ -16,14 +16,66 @@ Custom block: **Foundry** — a blast-furnace-like smelter with:
 
 | File | Purpose |
 |------|---------|
-| `src/main/kotlin/.../block/entity/FoundryBlockEntity.kt` | Server-side logic, fluid tank, inventory, tick |
+| `src/main/kotlin/.../block/entity/FoundryBlockEntity.kt` | Server-side orchestration — tick, recipe, XP, serialization |
+| `src/main/kotlin/.../block/entity/FoundryState.kt` | Mutable smelting state + its serialization |
+| `src/main/kotlin/.../block/entity/FoundryLavaTank.kt` | All fluid logic: storage, bucket consumption, drain, serialization |
 | `src/main/kotlin/.../menu/FoundryMenu.kt` | Container menu — slot registration + ALL layout constants |
 | `src/client/kotlin/.../screen/FoundryScreen.kt` | GUI rendering |
 | `src/main/resources/assets/foundry/textures/gui/container/foundry.png` | 256×256 palette-indexed GUI sheet |
-| `assets/foundry/textures/gui/sprites/container/foundry/lit_progress.png` | Animated flame sprite (14×14 currently, needs frames) |
+| `assets/foundry/textures/gui/sprites/container/foundry/lit_progress.png` | Animated flame sprite |
 | `assets/foundry/textures/gui/sprites/container/foundry/burn_progress.png` | Animated arrow sprite |
 | `assets/foundry/textures/gui/sprites/container/foundry/lava_fill.png` | 16×128 animated lava fill (8×16×16 frames) |
 | `assets/foundry/textures/gui/sprites/container/foundry/lava_fill.png.mcmeta` | Animation metadata |
+
+---
+
+## Block Entity Architecture
+
+The block entity is split into three focused classes:
+
+### `FoundryState` — smelting state
+Owns the five mutable smelting fields and their serialization:
+```kotlin
+var fuelBurnTimeLeft: Int = 0
+var maxFuelBurnTime: Int = 0
+var smeltProgress: Int = 0
+var smeltTotal: Int = DEFAULT_COOK_TIME   // 200
+var storedXp: Float = 0f
+
+val isBurning: Boolean get() = fuelBurnTimeLeft > 0
+
+fun save(output: ValueOutput) { ... }
+fun load(input: ValueInput) { ... }
+```
+
+### `FoundryLavaTank` — fluid logic
+Owns everything fluid-related:
+```kotlin
+val storage: SingleVariantStorage<FluidVariant>   // exposed to pipes via ModBlockEntities
+val hasLava: Boolean
+val percent: Int   // 0–100, for ContainerData slot 4
+val mb: Int        // 0–4000 mB, for ContainerData slot 5
+
+fun tryConsumeBucket(bucketSlot: ItemStack): ItemStack?   // returns empty bucket or null
+fun drainForBoost()                                        // call once per boosted tick
+fun save(output: ValueOutput)
+fun load(input: ValueInput)
+
+companion object {
+    val CAPACITY: Long = FluidConstants.BUCKET * 4
+    val DRAIN_PER_TICK: Long = FluidConstants.BUCKET / 1600
+}
+```
+
+### `FoundryBlockEntity` — orchestration
+Holds `val lava = FoundryLavaTank { setChanged() }` and `val state = FoundryState()`.  
+Owns: inventory, ContainerData, tick logic, recipe matching, XP, MenuProvider boilerplate.  
+Note: constructor parameter is `blockState: BlockState` (not `state`) to avoid shadowing the `state` property.
+
+Pipe access wired in `ModBlockEntities`:
+```kotlin
+FluidStorage.SIDED.registerForBlockEntity({ entity, _ -> entity.lava.storage }, FOUNDRY)
+```
 
 ---
 
@@ -38,10 +90,6 @@ const val OUTPUT_SLOT_3     = 4   // overflow
 const val BYPRODUCT_SLOT    = 5   // slag
 const val LAVA_BUCKET_SLOT  = 6
 const val INVENTORY_SIZE    = 7
-
-val LAVA_CAPACITY: Long = FluidConstants.BUCKET * 4
-val LAVA_DRAIN_PER_TICK: Long = FluidConstants.BUCKET / 1600
-const val DEFAULT_COOK_TIME = 200
 ```
 
 ---
@@ -74,32 +122,38 @@ const val ARROW_W = 22;  const val ARROW_H = 15
 // Lava gauge border (interior = BAR_X+1, BAR_Y+1, BAR_W-2, BAR_H-2)
 const val BAR_X = 152;  const val BAR_Y = 7
 const val BAR_W = 16;   const val BAR_H = 50
+
+// Slot iteration lists (used by Screen's outline loop and Menu's output loop)
+val OUTPUT_SLOTS: List<Triple<Int, Int, Int>>   // (slotIndex, x, y)
+val ALL_SLOT_POSITIONS: List<Pair<Int, Int>>     // (x, y) for every slot
 ```
 
 ---
 
 ## ContainerData Slots (synced to client)
 
-| Index | Value |
-|-------|-------|
-| 0 | `smeltProgress` |
-| 1 | `smeltTotal` |
-| 2 | `fuelBurnTimeLeft` (capped at Short.MAX_VALUE) |
-| 3 | `maxFuelBurnTime` (capped at Short.MAX_VALUE) |
-| 4 | lava % (0–100) |
-| 5 | lava in mB (0–4000) |
+| Index | Value | Source |
+|-------|-------|--------|
+| 0 | `smeltProgress` | `state.smeltProgress` |
+| 1 | `smeltTotal` | `state.smeltTotal` |
+| 2 | `fuelBurnTimeLeft` (capped at Short.MAX_VALUE) | `state.fuelBurnTimeLeft` |
+| 3 | `maxFuelBurnTime` (capped at Short.MAX_VALUE) | `state.maxFuelBurnTime` |
+| 4 | lava % (0–100) | `lava.percent` |
+| 5 | lava in mB (0–4000) | `lava.mb` |
 
 ---
 
 ## GUI Rendering Notes (`FoundryScreen`)
 
-- `extractBackground()` renders: foundry.png sheet → animated flame → animated arrow → lava fill
-- **Lava fill** is tiled vertically using `renderLavaTile()` with the `lava_fill` sprite (16-px frame height)
-- **Sprites** are all mod-namespaced (NOT vanilla):
+- `extractBackground()` renders: foundry.png sheet → slot outlines → animated flame → animated arrow → lava fill
+- **Slot outlines** rendered via loop over `FoundryMenu.ALL_SLOT_POSITIONS` using vanilla `minecraft:container/slot` sprite
+- **Lava fill** tiled vertically using `renderLavaTile()` with the `lava_fill` sprite (16-px frame height)
+- **Sprites** are all mod-namespaced:
   ```kotlin
   LIT_PROGRESS_SPRITE  = foundry:container/foundry/lit_progress
   BURN_PROGRESS_SPRITE = foundry:container/foundry/burn_progress
   LAVA_FILL            = foundry:container/foundry/lava_fill
+  SLOT_SPRITE          = minecraft:container/slot
   ```
 - `extractRenderState()` shows lava mB tooltip when hovering the gauge
 
@@ -115,72 +169,16 @@ const val BAR_W = 16;   const val BAR_H = 50
   - 3 = `#555555`
   - 4 = `#373737` (dark border)
   - 5 = `#8B8B8B` (slot gray / outlines)
-- Container area rows 3–81, cols 3–173 — all static GUI elements are baked here
-
----
-
-## Pending Tasks
-
-### 1. Bake static elements into foundry.png (Python script needed)
-Elements to draw directly onto foundry.png so they show without the machine being active:
-- **Lava gauge border**: rect at `(BAR_X=152, BAR_Y=7)`, size `16×50`; border=palette 4, interior=dark (palette 0 or new dark entry)
-- **Flame outline** (the "off" state background): rect at `(FLAME_X=26, FLAME_Y=36)`, size `13×14`; color=palette 5
-- **Arrow outline** (the "off" state background): rect at `(ARROW_X=50, ARROW_Y=35)`, size `22×15`; color=palette 5
-
-### 2. Output slots → array + loop in `FoundryMenu.kt`
-Currently 3 manual `addSlot` calls. Refactor to:
-```kotlin
-companion object {
-    val OUTPUT_SLOTS = listOf(
-        Triple(FoundryBlockEntity.OUTPUT_SLOT,   OUTPUT1_X, OUTPUT1_Y),
-        Triple(FoundryBlockEntity.OUTPUT_SLOT_2, OUTPUT2_X, OUTPUT2_Y),
-        Triple(FoundryBlockEntity.OUTPUT_SLOT_3, OUTPUT3_X, OUTPUT3_Y),
-    )
-    // All slot positions for the Screen's outline-rendering loop
-    val ALL_SLOT_POSITIONS = listOf(
-        Pair(INPUT_X, INPUT_Y), Pair(FUEL_X, FUEL_Y),
-        Pair(OUTPUT1_X, OUTPUT1_Y), Pair(OUTPUT2_X, OUTPUT2_Y), Pair(OUTPUT3_X, OUTPUT3_Y),
-        Pair(BYPRODUCT_X, BYPRODUCT_Y), Pair(LAVA_BUCKET_X, LAVA_BUCKET_Y),
-    )
-}
-```
-Then replace the 3 `addSlot` blocks with:
-```kotlin
-for ((slotIdx, x, y) in OUTPUT_SLOTS) {
-    addSlot(object : Slot(container, slotIdx, x + 1, y + 1) {
-        override fun mayPlace(stack: ItemStack) = false
-        override fun onTake(player: Player, stack: ItemStack) {
-            if (!player.level().isClientSide) foundry?.popExperience(player.level() as ServerLevel)
-            super.onTake(player, stack)
-        }
-    })
-}
-```
-
-### 3. Slot outline rendering loop in `FoundryScreen.kt`
-Add to `extractBackground()` (after blitting foundry.png, before animated sprites):
-```kotlin
-val SLOT_SPRITE = Identifier.fromNamespaceAndPath("minecraft", "container/slot")
-for ((sx, sy) in FoundryMenu.ALL_SLOT_POSITIONS) {
-    graphics.blitSprite(RenderPipelines.GUI_TEXTURED, SLOT_SPRITE, xo + sx, yo + sy, 18, 18)
-}
-```
-Also **remove** the stray self-referential import:
-```kotlin
-// DELETE this line:
-import dev.lucien.foundry.screen.FoundryScreen.Companion.LAVA_FILL
-```
-
-### 4. Verify/improve sprite PNGs
-`lit_progress.png` (14×14) and `burn_progress.png` exist but may need to be proper animated sprites.  
-Check if `.mcmeta` files are needed for them.
 
 ---
 
 ## Design Decisions
 
-- **No vanilla texture borrowing**: All static GUI elements owned by this mod's `foundry.png`. Not dependent on positional offsets in `blast_furnace.png` or similar.
+- **No vanilla texture borrowing**: All static GUI elements owned by this mod's `foundry.png`.
 - **F3+T only reloads textures**: Kotlin code changes require full `./gradlew runClient` rebuild.
 - **`addSlot` offset convention**: Menu constants = outer 18×18 corner; slots registered at `+1` for inner 16×16.
 - **Lava boost**: 4× speed when lava present (drains `BUCKET/1600` per tick); 2× without lava.
 - **Byproduct (slag)**: `byproductChance` field — floor = guaranteed count, fraction = roll for +1 extra.
+- **`blockState` constructor param**: Named `blockState` (not `state`) to avoid shadowing the `val state: FoundryState` property.
+- **`level.server` on `ServerLevel`**: Non-null at runtime despite Java `@Nullable` on base `Level.getServer()`. Plain `.` call is correct; Sonar false-positive suppressed with `// NOSONAR` if needed.
+- **JEI recipe source**: Reads directly from `RecipeManager.getAllRecipesFor(ModRecipes.FOUNDRY_RECIPE_TYPE)` — single source of truth is JSON, no hardcoded mirror list.
