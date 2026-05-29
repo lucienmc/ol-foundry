@@ -8,12 +8,12 @@ entityDistanceScaling:1.0
 entityShadows:true
 forceUnicodeFont:false
 japaneseGlyphVariants:false
-fov:0.2
+fov:0.4
 fovEffectScale:1.0
 darknessEffectScale:1.0
 glintSpeed:0.5
 glintStrength:0.75
-graphicsPreset:"fancy"
+graphicsPreset:"custom"
 prioritizeChunkUpdates:1
 fullscreen:false
 exclusiveFullscreen:false
@@ -28,7 +28,7 @@ mipmapLevels:4
 narrator:0
 particles:0
 reducedDebugInfo:false
-renderClouds:"true"
+renderClouds:"false"
 cloudRange:64
 renderDistance:16
 simulationDistance:12
