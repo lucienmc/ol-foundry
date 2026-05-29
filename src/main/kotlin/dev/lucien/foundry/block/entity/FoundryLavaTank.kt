@@ -24,7 +24,15 @@ class FoundryLavaTank(private val onChanged: () -> Unit) {
 
     val hasLava: Boolean get() = storage.amount > 0L
     val percent: Int get() = if (storage.amount > 0L) ((storage.amount * 100L) / CAPACITY).toInt() else 0
-    val mb: Int get() = (storage.amount / 81L).toInt()
+    val mb: Int get() = (storage.amount / DROPLETS_PER_MB).toInt()
+
+    /** Fills the tank to [mb] milli-buckets of lava (clamped to capacity). Used when placing a stored block. */
+    fun fillFromMb(mb: Int) {
+        if (mb <= 0) return
+        storage.variant = FluidVariant.of(Fluids.LAVA)
+        storage.amount = (mb * DROPLETS_PER_MB).coerceAtMost(CAPACITY)
+        onChanged()
+    }
 
     fun tryConsumeBucket(bucketSlot: ItemStack): ItemStack? {
         if (bucketSlot.isEmpty || !bucketSlot.`is`(Items.LAVA_BUCKET)) return null
@@ -58,5 +66,9 @@ class FoundryLavaTank(private val onChanged: () -> Unit) {
     companion object {
         const val CAPACITY: Long = FluidConstants.BUCKET * 4
         const val DRAIN_PER_TICK: Long = FluidConstants.BUCKET / 1600
+        const val DROPLETS_PER_MB: Long = FluidConstants.BUCKET / 1000
+
+        /** Tank capacity expressed in milli-buckets (for display: "x / 4000 mB"). */
+        val CAPACITY_MB: Int = (CAPACITY / DROPLETS_PER_MB).toInt()
     }
 }

@@ -13,6 +13,7 @@ import net.minecraft.world.item.CreativeModeTab
 import net.minecraft.world.item.CreativeModeTab.ItemDisplayParameters
 import net.minecraft.world.item.Item
 import net.minecraft.world.item.ItemStack
+import net.minecraft.world.level.block.ComposterBlock
 
 object ModItems {
 
@@ -60,6 +61,6 @@ object ModItems {
             CUSTOM_CREATIVE_TAB
         )
 
-        net.minecraft.world.level.block.ComposterBlock.COMPOSTABLES[SLAG] = 0.3f
+        ComposterBlock.COMPOSTABLES[SLAG] = 0.3f
     }
 }

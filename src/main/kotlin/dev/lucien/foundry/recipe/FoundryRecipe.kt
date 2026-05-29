@@ -36,7 +36,7 @@ class FoundryRecipe(
         ingredient.test(input.inputItem)
 
     override fun assemble(input: FoundryRecipeInput): ItemStack =
-        result.create().copy()
+        result.create()
 
     override fun getSerializer(): RecipeSerializer<out Recipe<FoundryRecipeInput>> =
         ModRecipes.FOUNDRY_RECIPE_SERIALIZER

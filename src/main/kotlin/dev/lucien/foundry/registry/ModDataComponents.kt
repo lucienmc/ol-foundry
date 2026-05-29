@@ -18,6 +18,6 @@ object ModDataComponents {
             .build()
     )
 
-    fun init() { /* triggers static initialisation */
-    }
+    /** Forces class-loading so the registrations above run. */
+    fun init() {}
 }

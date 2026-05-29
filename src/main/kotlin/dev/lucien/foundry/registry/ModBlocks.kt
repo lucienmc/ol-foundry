@@ -49,6 +49,6 @@ object ModBlocks {
         )
     }
 
-    fun init() { /* Triggers static initialisation */
-    }
+    /** Forces class-loading so the registrations above run. */
+    fun init() {}
 }

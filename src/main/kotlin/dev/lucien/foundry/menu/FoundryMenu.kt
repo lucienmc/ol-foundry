@@ -26,7 +26,7 @@ class FoundryMenu private constructor(
         containerId,
         inventory,
         SimpleContainer(FoundryBlockEntity.INVENTORY_SIZE),
-        SimpleContainerData(6),
+        SimpleContainerData(FoundryBlockEntity.DATA_COUNT),
         null
     )
 
@@ -72,12 +72,12 @@ class FoundryMenu private constructor(
     private fun isSmeltable(stack: ItemStack): Boolean =
         FoundryBlockEntity.isSmeltable(inventory.player.level(), stack)
 
-    fun getSmeltProgress(): Int = data.get(0)
-    fun getSmeltTotal(): Int = data.get(1).coerceAtLeast(1)
-    fun getFuelBurnLeft(): Int = data.get(2)
-    fun getFuelBurnMax(): Int = data.get(3).coerceAtLeast(1)
-    fun getLavaPercent(): Int = data.get(4)
-    fun getLavaMb(): Int = data.get(5)   // 0..4000 mB
+    fun getSmeltProgress(): Int = data.get(FoundryBlockEntity.DATA_SMELT_PROGRESS)
+    fun getSmeltTotal(): Int = data.get(FoundryBlockEntity.DATA_SMELT_TOTAL).coerceAtLeast(1)
+    fun getFuelBurnLeft(): Int = data.get(FoundryBlockEntity.DATA_FUEL_LEFT)
+    fun getFuelBurnMax(): Int = data.get(FoundryBlockEntity.DATA_FUEL_MAX).coerceAtLeast(1)
+    fun getLavaPercent(): Int = data.get(FoundryBlockEntity.DATA_LAVA_PERCENT)
+    fun getLavaMb(): Int = data.get(FoundryBlockEntity.DATA_LAVA_MB)
     fun isBurning(): Boolean = getFuelBurnLeft() > 0
 
     override fun quickMoveStack(player: Player, slotIndex: Int): ItemStack {

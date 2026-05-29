@@ -2,14 +2,12 @@ package dev.lucien.foundry.jei
 
 import dev.lucien.foundry.registry.ModBlocks
 import mezz.jei.api.gui.builder.IRecipeLayoutBuilder
-import mezz.jei.api.gui.ingredient.IRecipeSlotsView
 import mezz.jei.api.gui.widgets.IRecipeExtrasBuilder
 import mezz.jei.api.helpers.IGuiHelper
 import mezz.jei.api.recipe.IFocusGroup
 import mezz.jei.api.recipe.types.IRecipeType
 import mezz.jei.api.recipe.category.IRecipeCategory
 import net.minecraft.ChatFormatting
-import net.minecraft.client.gui.GuiGraphicsExtractor
 import net.minecraft.network.chat.Component
 import net.minecraft.network.chat.FormattedText
 import net.minecraft.world.item.ItemStack
@@ -17,7 +15,7 @@ import net.minecraft.world.item.Items
 
 class FoundryRecipeCategory(guiHelper: IGuiHelper) : IRecipeCategory<FoundryRecipeDisplay> {
 
-    private val background = guiHelper.createBlankDrawable(WIDTH, HEIGHT)
+    private val icon = guiHelper.createDrawableItemStack(ItemStack(ModBlocks.FOUNDRY))
 
     override fun getRecipeType(): IRecipeType<FoundryRecipeDisplay> =
         FoundryJeiPlugin.FOUNDRY_RECIPE_TYPE
@@ -27,7 +25,7 @@ class FoundryRecipeCategory(guiHelper: IGuiHelper) : IRecipeCategory<FoundryReci
     override fun getWidth() = WIDTH
     override fun getHeight() = HEIGHT
 
-    override fun getIcon(): mezz.jei.api.gui.drawable.IDrawable? = null
+    override fun getIcon(): mezz.jei.api.gui.drawable.IDrawable = icon
 
     override fun setRecipe(
         builder: IRecipeLayoutBuilder,
@@ -108,16 +106,6 @@ class FoundryRecipeCategory(guiHelper: IGuiHelper) : IRecipeCategory<FoundryReci
             /* maxWidth = */ 50,
             /* maxHeight = */ 9,
         ).setPosition(FUEL_X, FUEL_Y - 11)
-    }
-
-    override fun draw(
-        display: FoundryRecipeDisplay,
-        recipeSlotsView: IRecipeSlotsView,
-        graphics: GuiGraphicsExtractor,
-        mouseX: Double,
-        mouseY: Double,
-    ) {
-        // All display is handled via slot tooltips and text/arrow widgets
     }
 
     private companion object {

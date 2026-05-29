@@ -1,6 +1,7 @@
 package dev.lucien.foundry.screen
 
 import dev.lucien.foundry.Foundry
+import dev.lucien.foundry.block.entity.FoundryLavaTank
 import dev.lucien.foundry.menu.FoundryMenu
 import net.minecraft.ChatFormatting
 import net.minecraft.client.gui.GuiGraphicsExtractor
@@ -126,7 +127,10 @@ class FoundryScreen(
         if (mouseX in barAbsX until barAbsX + FoundryMenu.BAR_W && mouseY in barAbsY until barAbsY + FoundryMenu.BAR_H) {
             graphics.setTooltipForNextFrame(
                 Component.literal("${menu.getLavaMb()}")
-                    .append(Component.literal(" / 4000 mB").withStyle(ChatFormatting.GRAY)),
+                    .append(
+                        Component.literal(" / ${FoundryLavaTank.CAPACITY_MB} mB")
+                            .withStyle(ChatFormatting.GRAY)
+                    ),
                 mouseX,
                 mouseY
             )

@@ -48,9 +48,9 @@ class FoundryBlockEntity(pos: BlockPos, blockState: BlockState) :
     override fun stillValid(player: Player): Boolean = Container.stillValidBlockEntity(this, player)
 
     override fun getSlotsForFace(side: Direction): IntArray = when (side) {
-        Direction.UP -> intArrayOf(INPUT_SLOT)
-        Direction.DOWN -> intArrayOf(OUTPUT_SLOT, OUTPUT_SLOT_2, OUTPUT_SLOT_3, BYPRODUCT_SLOT)
-        else -> intArrayOf(FUEL_SLOT, LAVA_BUCKET_SLOT)
+        Direction.UP -> SLOTS_TOP
+        Direction.DOWN -> EXTRACT_SLOTS
+        else -> SLOTS_SIDE
     }
 
     override fun canPlaceItemThroughFace(
@@ -72,34 +72,33 @@ class FoundryBlockEntity(pos: BlockPos, blockState: BlockState) :
         index: Int,
         stack: ItemStack,
         direction: Direction
-    ): Boolean =
-        index == OUTPUT_SLOT || index == OUTPUT_SLOT_2 || index == OUTPUT_SLOT_3 || index == BYPRODUCT_SLOT
+    ): Boolean = index in EXTRACT_SLOTS
 
     val lava = FoundryLavaTank { setChanged() }
     val state = FoundryState()
 
     val containerData: ContainerData = object : ContainerData {
         override fun get(index: Int): Int = when (index) {
-            0 -> state.smeltProgress
-            1 -> state.smeltTotal
-            2 -> state.fuelBurnTimeLeft.coerceAtMost(Short.MAX_VALUE.toInt())
-            3 -> state.maxFuelBurnTime.coerceAtMost(Short.MAX_VALUE.toInt())
-            4 -> lava.percent
-            5 -> lava.mb
+            DATA_SMELT_PROGRESS -> state.smeltProgress
+            DATA_SMELT_TOTAL -> state.smeltTotal
+            DATA_FUEL_LEFT -> state.fuelBurnTimeLeft.coerceAtMost(Short.MAX_VALUE.toInt())
+            DATA_FUEL_MAX -> state.maxFuelBurnTime.coerceAtMost(Short.MAX_VALUE.toInt())
+            DATA_LAVA_PERCENT -> lava.percent
+            DATA_LAVA_MB -> lava.mb
             else -> 0
         }
 
         override fun set(index: Int, value: Int) {
             when (index) {
-                0 -> state.smeltProgress = value
-                1 -> state.smeltTotal = value
-                2 -> state.fuelBurnTimeLeft = value
-                3 -> state.maxFuelBurnTime = value
-                // indices 4 and 5 are read-only on client
+                DATA_SMELT_PROGRESS -> state.smeltProgress = value
+                DATA_SMELT_TOTAL -> state.smeltTotal = value
+                DATA_FUEL_LEFT -> state.fuelBurnTimeLeft = value
+                DATA_FUEL_MAX -> state.maxFuelBurnTime = value
+                // DATA_LAVA_PERCENT / DATA_LAVA_MB are server-derived and read-only on the client
             }
         }
 
-        override fun getCount(): Int = 6
+        override fun getCount(): Int = DATA_COUNT
     }
 
     private fun serverTick(level: ServerLevel) {
@@ -109,7 +108,7 @@ class FoundryBlockEntity(pos: BlockPos, blockState: BlockState) :
         val recipeInput = FoundryRecipeInput(inputStack, lava.hasLava)
 
         val recipeHolder =
-            level.recipeAccess().getSynchronizedRecipes()
+            level.recipeAccess().synchronizedRecipes
                 .getFirstMatch(ModRecipes.FOUNDRY_RECIPE_TYPE, recipeInput, level)
                 .orElse(null)
 
@@ -187,38 +186,26 @@ class FoundryBlockEntity(pos: BlockPos, blockState: BlockState) :
         }
     }
 
-    private fun addToOutputSlots(item: ItemStack): Boolean {
-        for (slotIndex in intArrayOf(OUTPUT_SLOT, OUTPUT_SLOT_2, OUTPUT_SLOT_3)) {
-            val slot = items[slotIndex]
-            when {
-                slot.isEmpty -> {
-                    items[slotIndex] = item.copy(); return true
-                }
-
-                ItemStack.isSameItemSameComponents(
-                    slot, item
-                ) && slot.count + item.count <= slot.maxStackSize -> {
-                    slot.grow(item.count); return true
-                }
-            }
-        }
-        return false
+    /** Merges [item] into [slotIndex] if it fits, returning whether it was placed. */
+    private fun insertInto(slotIndex: Int, item: ItemStack): Boolean {
+        if (!canFitInSlot(slotIndex, item)) return false
+        val slot = items[slotIndex]
+        if (slot.isEmpty) items[slotIndex] = item.copy() else slot.grow(item.count)
+        return true
     }
+
+    private fun addToResultSlots(item: ItemStack): Boolean =
+        RESULT_SLOTS.any { insertInto(it, item) }
 
     private fun canOutput(recipe: FoundryRecipe): Boolean {
         if (items[INPUT_SLOT].isEmpty) return false
-        val result = recipe.result.create()
 
-        // At least one of the three output slots must be able to accept the result
-        val canFitOutput = canFitInSlot(OUTPUT_SLOT, result) || canFitInSlot(
-            OUTPUT_SLOT_2, result
-        ) || canFitInSlot(OUTPUT_SLOT_3, result)
-        if (!canFitOutput) return false
+        val result = recipe.result.create()
+        if (RESULT_SLOTS.none { canFitInSlot(it, result) }) return false
 
         if (recipe.byproductChance > 0f) {
             val minSlag = recipe.byproductChance.toInt().coerceAtLeast(1)
-            val slag = ItemStack(ModItems.SLAG, minSlag)
-            if (!canFitInSlot(BYPRODUCT_SLOT, slag)) return false
+            if (!canFitInSlot(BYPRODUCT_SLOT, ItemStack(ModItems.SLAG, minSlag))) return false
         }
 
         return true
@@ -228,13 +215,13 @@ class FoundryBlockEntity(pos: BlockPos, blockState: BlockState) :
         val result = recipe.result.create()
 
         items[INPUT_SLOT].shrink(1)
-        addToOutputSlots(result)
+        addToResultSlots(result)
         state.storedXp += recipe.experience
 
         if (recipe.bonusResultChance > 0f) {
             val lavaPreconditionMet = !recipe.bonusRequiresLava || lava.hasLava
             val bonusRolled = level.random.nextFloat() < recipe.bonusResultChance
-            if (lavaPreconditionMet && bonusRolled) addToOutputSlots(result.copy())
+            if (lavaPreconditionMet && bonusRolled) addToResultSlots(result.copy())
         }
 
         // floor(byproductChance) = guaranteed slag; fraction = roll for +1 (supports >1 for bulk recipes)
@@ -243,17 +230,7 @@ class FoundryBlockEntity(pos: BlockPos, blockState: BlockState) :
             val fraction = recipe.byproductChance - guaranteed
             val count =
                 guaranteed + if (fraction > 0f && level.random.nextFloat() < fraction) 1 else 0
-            if (count > 0) {
-                val slag = ItemStack(ModItems.SLAG)
-                val byproduct = items[BYPRODUCT_SLOT]
-                when {
-                    byproduct.isEmpty -> items[BYPRODUCT_SLOT] = ItemStack(ModItems.SLAG, count)
-
-                    ItemStack.isSameItemSameComponents(
-                        byproduct, slag
-                    ) && byproduct.count + count <= byproduct.maxStackSize -> byproduct.grow(count)
-                }
-            }
+            if (count > 0) insertInto(BYPRODUCT_SLOT, ItemStack(ModItems.SLAG, count))
         }
     }
 
@@ -300,6 +277,24 @@ class FoundryBlockEntity(pos: BlockPos, blockState: BlockState) :
         const val BYPRODUCT_SLOT = 5
         const val LAVA_BUCKET_SLOT = 6
         const val INVENTORY_SIZE = 7
+
+        /** The three result slots, filled left-to-right. */
+        val RESULT_SLOTS = intArrayOf(OUTPUT_SLOT, OUTPUT_SLOT_2, OUTPUT_SLOT_3)
+
+        /** Slots a hopper may pull from (bottom face). */
+        val EXTRACT_SLOTS = intArrayOf(OUTPUT_SLOT, OUTPUT_SLOT_2, OUTPUT_SLOT_3, BYPRODUCT_SLOT)
+
+        private val SLOTS_TOP = intArrayOf(INPUT_SLOT)
+        private val SLOTS_SIDE = intArrayOf(FUEL_SLOT, LAVA_BUCKET_SLOT)
+
+        // ContainerData indices — shared between this entity and FoundryMenu.
+        const val DATA_SMELT_PROGRESS = 0
+        const val DATA_SMELT_TOTAL = 1
+        const val DATA_FUEL_LEFT = 2
+        const val DATA_FUEL_MAX = 3
+        const val DATA_LAVA_PERCENT = 4
+        const val DATA_LAVA_MB = 5
+        const val DATA_COUNT = 6
 
         fun isSmeltable(level: Level, stack: ItemStack): Boolean {
             val input = FoundryRecipeInput(stack, false)
