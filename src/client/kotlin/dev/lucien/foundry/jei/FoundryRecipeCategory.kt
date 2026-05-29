@@ -100,6 +100,7 @@ class FoundryRecipeCategory(guiHelper: IGuiHelper) : IRecipeCategory<FoundryReci
                 }
         }
 
+        // Any furnace fuel works at 1×; these smelt faster. Lava doubles the active fuel speed.
         builder.addInputSlot(FUEL_X, FUEL_Y)
             .addItemStacks(listOf(ItemStack(Items.COAL), ItemStack(Items.CHARCOAL)))
             .addRichTooltipCallback { _, tooltip ->
@@ -109,6 +110,14 @@ class FoundryRecipeCategory(guiHelper: IGuiHelper) : IRecipeCategory<FoundryReci
             }
 
         builder.addInputSlot(FUEL_X + 25, FUEL_Y)
+            .add(Items.MAGMA_CREAM)
+            .addRichTooltipCallback { _, tooltip ->
+                tooltip.add(
+                    Component.literal("2× smelting speed").withStyle(ChatFormatting.GOLD)
+                )
+            }
+
+        builder.addInputSlot(FUEL_X + 50, FUEL_Y)
             .add(Items.BLAZE_ROD)
             .addRichTooltipCallback { _, tooltip ->
                 tooltip.add(
@@ -116,7 +125,7 @@ class FoundryRecipeCategory(guiHelper: IGuiHelper) : IRecipeCategory<FoundryReci
                 )
             }
 
-        builder.addInputSlot(FUEL_X + 50, FUEL_Y)
+        builder.addInputSlot(FUEL_X + 75, FUEL_Y)
             .add(Items.LAVA_BUCKET)
             .addRichTooltipCallback { _, tooltip ->
                 tooltip.add(

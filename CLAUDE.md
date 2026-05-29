@@ -6,7 +6,7 @@ Mod ID: `foundry`. Main class: `dev.lucien.foundry.Foundry`.
 
 Custom block: **Foundry** — a blast-furnace-like smelter (extends `AbstractFurnaceBlock`) with:
 - Lava fluid tank (4-bucket / 4000 mB capacity) that **doubles** the active fuel's smelting speed
-- Fuel-tiered smelting speed: coal/charcoal = 1.5×, blaze rod = 3× (lava doubles each)
+- Fuel-tiered smelting speed: any fuel = 1×, coal/charcoal = 1.5×, magma cream = 2×, blaze rod = 3× (lava doubles each)
 - 3 output slots (primary result fills left-to-right)
 - 1 byproduct slot (slag)
 - 1 lava-bucket input slot (auto-consumes lava buckets into the tank each tick)
@@ -89,13 +89,17 @@ Note: constructor parameter is `blockState: BlockState` (not `state`) to avoid s
 ```kotlin
 const val PROGRESS_RESOLUTION = 2     // smeltTotal = cookingTime * 2, keeps 1.5× integer
 const val PROGRESS_DECAY = 2          // progress lost per tick when not burning
-const val BASE_FUEL_SPEED = 3         // coal/charcoal → 1.5×
-const val BLAZE_FUEL_SPEED = 6        // blaze rod    → 3×
+const val BASE_FUEL_SPEED = 2         // any fuel      → 1×
+const val COAL_FUEL_SPEED = 3         // #c:coals      → 1.5×
+const val MAGMA_FUEL_SPEED = 4        // magma cream   → 2×
+const val BLAZE_FUEL_SPEED = 6        // blaze rod     → 3×
 const val LAVA_SPEED_MULTIPLIER = 2   // lava doubles the active fuel speed
-fun fuelSpeedFor(stack): Int          // BLAZE_ROD → 6, else 3
+const val MAGMA_CREAM_BURN_TIME = 1000 // magma cream isn't a vanilla fuel — given a burn time
+fun fuelSpeedFor(stack): Int          // BLAZE_ROD → 6, MAGMA_CREAM → 4, #minecraft:coals → 3, else 2
 ```
 `tryStartFuel` records `state.fuelSpeed = fuelSpeedFor(fuel)`; each smelting tick adds
-`fuelSpeed * (lava ? 2 : 1)` to `smeltProgress`.
+`fuelSpeed * (lava ? 2 : 1)` to `smeltProgress`. `getFuelBurnTime` accepts any vanilla fuel
+(`fuelValues()`), plus slag (800) and magma cream (1000).
 
 **Recipe matching is cross-side** — always via `level.recipeAccess().synchronizedRecipes`
 (`getFirstMatch` / `getAllOfType`), never `getRecipeFor`/`getAllRecipesFor` (those don't exist
@@ -237,9 +241,10 @@ Indices 4 & 5 are server-derived (read-only on the client).
 - **No vanilla texture borrowing**: All static GUI elements owned by this mod's `foundry.png`.
 - **F3+T only reloads textures**: Kotlin code changes require full `./gradlew runClient` rebuild.
 - **`addSlot` offset convention**: Menu constants = outer 18×18 corner; slots registered at `+1` for inner 16×16.
-- **Smelting speed = fuel tier × lava**: coal/charcoal 1.5×, blaze rod 3×; lava in the tank doubles
-  the active fuel speed (and drains `BUCKET/1600` per boosted tick). Tracked at `PROGRESS_RESOLUTION = 2`
-  so the 1.5× stays integer. Fuel type also still affects burn *duration* (vanilla `fuelValues()`; slag = 800).
+- **Smelting speed = fuel tier × lava**: any fuel 1×, coal/charcoal 1.5×, magma cream 2×, blaze rod 3×;
+  lava in the tank doubles the active fuel speed (and drains `BUCKET/1600` per boosted tick). Tracked at
+  `PROGRESS_RESOLUTION = 2` so the 1.5× stays integer. Fuel type also affects burn *duration* (vanilla
+  `fuelValues()`; slag = 800, magma cream = 1000 — the latter two aren't vanilla furnace fuels).
 - **Byproduct (slag)**: `byproductChance` field — floor = guaranteed count, fraction = roll for +1 extra
   (supports `>1` for bulk recipes like raw-ore-blocks).
 - **Weighted result pools**: `FoundryRecipe.resultPool: List<WeightedResult>` (optional). When non-empty,
