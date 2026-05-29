@@ -46,7 +46,7 @@ jobs:
         uses: Kir-Antipov/mc-publish@v3.3
         with:
           # ── Modrinth ────────────────────────────────────────────────
-          modrinth-id: CHANGEME_MODRINTH_PROJECT_ID
+          modrinth-id: tJYeTacj
           modrinth-token: ${{ secrets.MODRINTH_TOKEN }}
 
           # ── GitHub Release (auto-provided token) ────────────────────
