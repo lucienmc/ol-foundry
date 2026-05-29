@@ -34,11 +34,9 @@ class FoundryRecipeCategory(guiHelper: IGuiHelper) : IRecipeCategory<FoundryReci
         display: FoundryRecipeDisplay,
         focuses: IFocusGroup,
     ) {
-        // ── Input ────────────────────────────────────────────────────────
         builder.addInputSlot(INPUT_X, SLOT_Y)
             .add(display.ingredient)
 
-        // ── Primary output (tooltip: XP + cook time) ─────────────────────
         builder.addOutputSlot(OUTPUT_X, SLOT_Y)
             .add(display.outputTemplate)
             .addRichTooltipCallback { _, tooltip ->
@@ -52,7 +50,6 @@ class FoundryRecipeCategory(guiHelper: IGuiHelper) : IRecipeCategory<FoundryReci
                 )
             }
 
-        // ── Byproduct: Slag (tooltip: chance %) ──────────────────────────
         var nextOutputY = SLOT_Y + 26
         if (display.byproductChance > 0f) {
             builder.addOutputSlot(OUTPUT_X, nextOutputY)
@@ -66,7 +63,6 @@ class FoundryRecipeCategory(guiHelper: IGuiHelper) : IRecipeCategory<FoundryReci
             nextOutputY += 26
         }
 
-        // ── Bonus result (e.g. extra netherite scrap) ─────────────────────
         if (display.hasBonusResult) {
             builder.addOutputSlot(OUTPUT_X, nextOutputY)
                 .add(display.outputTemplate)
@@ -84,45 +80,14 @@ class FoundryRecipeCategory(guiHelper: IGuiHelper) : IRecipeCategory<FoundryReci
                 }
         }
 
-        // ── Fuels (each with speed-multiplier tooltip) ────────────────────
-        // Coal / Charcoal: cycles between both items
         builder.addInputSlot(FUEL_X, FUEL_Y)
             .addItemStacks(listOf(ItemStack(Items.COAL), ItemStack(Items.CHARCOAL)))
-            .addRichTooltipCallback { _, tooltip ->
-                tooltip.add(
-                    Component.literal("Fuel: 2× speed")
-                        .withStyle(ChatFormatting.YELLOW)
-                )
-                tooltip.add(
-                    Component.literal("With lava: 4× speed")
-                        .withStyle(ChatFormatting.GRAY)
-                )
-            }
 
-        // Blaze Rod: 4× / 8× with lava
         builder.addInputSlot(FUEL_X + 25, FUEL_Y)
-            .add(Items.BLAZE_ROD)
-            .addRichTooltipCallback { _, tooltip ->
-                tooltip.add(
-                    Component.literal("Fuel: 4× speed")
-                        .withStyle(ChatFormatting.YELLOW)
-                )
-                tooltip.add(
-                    Component.literal("With lava: 8× speed")
-                        .withStyle(ChatFormatting.GRAY)
-                )
-            }
-
-        // Lava Bucket: 6× speed, fills the lava slot
-        builder.addInputSlot(FUEL_X + 50, FUEL_Y)
             .add(Items.LAVA_BUCKET)
             .addRichTooltipCallback { _, tooltip ->
                 tooltip.add(
-                    Component.literal("Fuel: 6× speed")
-                        .withStyle(ChatFormatting.YELLOW)
-                )
-                tooltip.add(
-                    Component.literal("Fills the lava slot")
+                    Component.literal("Fills the lava tank for 4× speed")
                         .withStyle(ChatFormatting.GRAY)
                 )
             }
@@ -133,11 +98,9 @@ class FoundryRecipeCategory(guiHelper: IGuiHelper) : IRecipeCategory<FoundryReci
         display: FoundryRecipeDisplay,
         focuses: IFocusGroup,
     ) {
-        // Arrow whose animation duration matches the recipe's cook time
         builder.addAnimatedRecipeArrow(display.cookingTime)
             .setPosition(ARROW_X, ARROW_Y)
 
-        // "Fuels:" section label above the fuel slots
         builder.addText(
             listOf<FormattedText>(
                 Component.literal("Fuels:").withStyle(ChatFormatting.DARK_GRAY)

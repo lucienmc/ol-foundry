@@ -1,0 +1,6 @@
+{
+  "parent": "foundry:block/foundry",
+  "textures": {
+    "north": "foundry:block/foundry_front_lit"
+  }
+}

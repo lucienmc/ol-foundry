@@ -8,6 +8,7 @@ import dev.lucien.foundry.registry.ModItems
 import dev.lucien.foundry.registry.ModRecipes
 import dev.lucien.foundry.util.ImplementedContainer
 import net.minecraft.core.BlockPos
+import net.minecraft.core.Direction
 import net.minecraft.core.HolderLookup
 import net.minecraft.core.NonNullList
 import net.minecraft.nbt.CompoundTag
@@ -19,13 +20,16 @@ import net.minecraft.server.level.ServerLevel
 import net.minecraft.world.Container
 import net.minecraft.world.ContainerHelper
 import net.minecraft.world.MenuProvider
+import net.minecraft.world.WorldlyContainer
 import net.minecraft.world.entity.ExperienceOrb
 import net.minecraft.world.entity.player.Inventory
 import net.minecraft.world.entity.player.Player
 import net.minecraft.world.inventory.AbstractContainerMenu
 import net.minecraft.world.inventory.ContainerData
 import net.minecraft.world.item.ItemStack
+import net.minecraft.world.item.Items
 import net.minecraft.world.level.Level
+import net.minecraft.world.level.block.AbstractFurnaceBlock
 import net.minecraft.world.level.block.entity.BlockEntity
 import net.minecraft.world.level.block.state.BlockState
 import net.minecraft.world.level.storage.ValueInput
@@ -33,28 +37,46 @@ import net.minecraft.world.level.storage.ValueOutput
 import net.minecraft.world.phys.Vec3
 
 class FoundryBlockEntity(pos: BlockPos, blockState: BlockState) :
-    BlockEntity(ModBlockEntities.FOUNDRY, pos, blockState), ImplementedContainer, MenuProvider {
-
-    // ── Inventory ────────────────────────────────────────────────────────────
+    BlockEntity(ModBlockEntities.FOUNDRY, pos, blockState), ImplementedContainer, WorldlyContainer,
+    MenuProvider {
 
     private val items: NonNullList<ItemStack> =
         NonNullList.withSize(INVENTORY_SIZE, ItemStack.EMPTY)
 
     override fun getItems(): NonNullList<ItemStack> = items
 
-    /** Expose Container.stillValid backed by block proximity check */
     override fun stillValid(player: Player): Boolean = Container.stillValidBlockEntity(this, player)
 
-    // ── Fluid Tank ────────────────────────────────────────────────────────────
+    override fun getSlotsForFace(side: Direction): IntArray = when (side) {
+        Direction.UP -> intArrayOf(INPUT_SLOT)
+        Direction.DOWN -> intArrayOf(OUTPUT_SLOT, OUTPUT_SLOT_2, OUTPUT_SLOT_3, BYPRODUCT_SLOT)
+        else -> intArrayOf(FUEL_SLOT, LAVA_BUCKET_SLOT)
+    }
 
-    /** Lava storage tank (capacity: 4 buckets). Exposed to pipes via [ModBlockEntities]. */
+    override fun canPlaceItemThroughFace(
+        index: Int,
+        stack: ItemStack,
+        direction: Direction?
+    ): Boolean =
+        when (index) {
+            INPUT_SLOT -> isSmeltable(stack)
+            FUEL_SLOT -> !stack.`is`(Items.LAVA_BUCKET) && !isSmeltable(stack)
+            LAVA_BUCKET_SLOT -> stack.`is`(Items.LAVA_BUCKET)
+            else -> false
+        }
+
+    private fun isSmeltable(stack: ItemStack): Boolean =
+        isSmeltable(level ?: return true, stack)
+
+    override fun canTakeItemThroughFace(
+        index: Int,
+        stack: ItemStack,
+        direction: Direction
+    ): Boolean =
+        index == OUTPUT_SLOT || index == OUTPUT_SLOT_2 || index == OUTPUT_SLOT_3 || index == BYPRODUCT_SLOT
+
     val lava = FoundryLavaTank { setChanged() }
-
-    // ── Smelting State ────────────────────────────────────────────────────────
-
     val state = FoundryState()
-
-    // ── ContainerData (synced to client for progress bars) ────────────────────
 
     val containerData: ContainerData = object : ContainerData {
         override fun get(index: Int): Int = when (index) {
@@ -80,8 +102,6 @@ class FoundryBlockEntity(pos: BlockPos, blockState: BlockState) :
         override fun getCount(): Int = 6
     }
 
-    // ── Server Tick ───────────────────────────────────────────────────────────
-
     private fun serverTick(level: ServerLevel) {
         processBucketSlot()
 
@@ -89,10 +109,16 @@ class FoundryBlockEntity(pos: BlockPos, blockState: BlockState) :
         val recipeInput = FoundryRecipeInput(inputStack, lava.hasLava)
 
         val recipeHolder =
-            level.recipeAccess().getRecipeFor(ModRecipes.FOUNDRY_RECIPE_TYPE, recipeInput, level)
+            level.recipeAccess().getSynchronizedRecipes()
+                .getFirstMatch(ModRecipes.FOUNDRY_RECIPE_TYPE, recipeInput, level)
                 .orElse(null)
 
         if (tickProgress(recipeHolder?.value(), level)) setChanged()
+
+        val shouldBeLit = state.isBurning
+        if (blockState.getValue(AbstractFurnaceBlock.LIT) != shouldBeLit) {
+            level.setBlock(blockPos, blockState.setValue(AbstractFurnaceBlock.LIT, shouldBeLit), 3)
+        }
     }
 
     private fun processBucketSlot() {
@@ -144,11 +170,6 @@ class FoundryBlockEntity(pos: BlockPos, blockState: BlockState) :
         }
     }
 
-    /**
-     * Checks vanilla fuel values, then falls back to custom fuels (slag).
-     * FuelValues is obtained from the MinecraftServer instance.
-     * If your version exposes it directly on Level, use `level.fuelValues()` instead.
-     */
     private fun getFuelBurnTime(level: ServerLevel, stack: ItemStack): Int {
         val vanillaTime = level.server.fuelValues().burnDuration(stack)
         if (vanillaTime > 0) return vanillaTime
@@ -157,7 +178,6 @@ class FoundryBlockEntity(pos: BlockPos, blockState: BlockState) :
         return 0
     }
 
-    /** Returns true if [item] fits in [slotIndex] (empty or same item with room). */
     private fun canFitInSlot(slotIndex: Int, item: ItemStack): Boolean {
         val slot = items[slotIndex]
         return when {
@@ -167,10 +187,6 @@ class FoundryBlockEntity(pos: BlockPos, blockState: BlockState) :
         }
     }
 
-    /**
-     * Tries to place [item] in the first available output slot (OUTPUT_SLOT → OUTPUT_SLOT_2 → OUTPUT_SLOT_3).
-     * Returns true if successfully placed.
-     */
     private fun addToOutputSlots(item: ItemStack): Boolean {
         for (slotIndex in intArrayOf(OUTPUT_SLOT, OUTPUT_SLOT_2, OUTPUT_SLOT_3)) {
             val slot = items[slotIndex]
@@ -211,23 +227,17 @@ class FoundryBlockEntity(pos: BlockPos, blockState: BlockState) :
     private fun craftResult(recipe: FoundryRecipe, level: ServerLevel) {
         val result = recipe.result.create()
 
-        // Consume one input item
         items[INPUT_SLOT].shrink(1)
-
-        // Primary output → fills OUTPUT_SLOT first, spills to OUTPUT_SLOT_2/3 if needed
         addToOutputSlots(result)
-
         state.storedXp += recipe.experience
 
-        // Bonus result (e.g. extra netherite scrap when lava is present)
         if (recipe.bonusResultChance > 0f) {
             val lavaPreconditionMet = !recipe.bonusRequiresLava || lava.hasLava
             val bonusRolled = level.random.nextFloat() < recipe.bonusResultChance
             if (lavaPreconditionMet && bonusRolled) addToOutputSlots(result.copy())
         }
 
-        // Byproduct: floor(chance) guaranteed slag + fractional roll for one more.
-        // byproductChance > 1 is supported for bulk recipes (e.g. raw-ore-blocks).
+        // floor(byproductChance) = guaranteed slag; fraction = roll for +1 (supports >1 for bulk recipes)
         if (recipe.byproductChance > 0f) {
             val guaranteed = recipe.byproductChance.toInt()
             val fraction = recipe.byproductChance - guaranteed
@@ -247,9 +257,6 @@ class FoundryBlockEntity(pos: BlockPos, blockState: BlockState) :
         }
     }
 
-    // ── Experience ────────────────────────────────────────────────────────────
-
-    /** Spawn XP orbs at the block for all banked experience. Called when player takes output. */
     fun popExperience(serverLevel: ServerLevel) {
         val whole = state.storedXp.toInt()
         val frac = state.storedXp - whole
@@ -257,8 +264,6 @@ class FoundryBlockEntity(pos: BlockPos, blockState: BlockState) :
         state.storedXp = 0f
         if (total > 0) ExperienceOrb.award(serverLevel, Vec3.atCenterOf(blockPos), total)
     }
-
-    // ── Serialisation ─────────────────────────────────────────────────────────
 
     override fun saveAdditional(output: ValueOutput) {
         super.saveAdditional(output)
@@ -280,25 +285,29 @@ class FoundryBlockEntity(pos: BlockPos, blockState: BlockState) :
     override fun getUpdatePacket(): Packet<ClientGamePacketListener> =
         ClientboundBlockEntityDataPacket.create(this)
 
-    // ── MenuProvider ──────────────────────────────────────────────────────────
-
     override fun getDisplayName(): Component = Component.translatable("block.foundry.foundry")
 
     override fun createMenu(
         containerId: Int, inventory: Inventory, player: Player
     ): AbstractContainerMenu = FoundryMenu(containerId, inventory, this, containerData)
 
-    // ── Constants ─────────────────────────────────────────────────────────────
-
     companion object {
         const val INPUT_SLOT = 0
         const val FUEL_SLOT = 1
-        const val OUTPUT_SLOT = 2   // primary result
-        const val OUTPUT_SLOT_2 = 3   // bonus result / overflow
-        const val OUTPUT_SLOT_3 = 4   // overflow / future use
-        const val BYPRODUCT_SLOT = 5   // slag
+        const val OUTPUT_SLOT = 2
+        const val OUTPUT_SLOT_2 = 3
+        const val OUTPUT_SLOT_3 = 4
+        const val BYPRODUCT_SLOT = 5
         const val LAVA_BUCKET_SLOT = 6
         const val INVENTORY_SIZE = 7
+
+        fun isSmeltable(level: Level, stack: ItemStack): Boolean {
+            val input = FoundryRecipeInput(stack, false)
+            return level.recipeAccess()
+                .synchronizedRecipes
+                .getFirstMatch(ModRecipes.FOUNDRY_RECIPE_TYPE, input, level)
+                .isPresent
+        }
 
         @JvmStatic
         fun tick(level: Level, entity: FoundryBlockEntity) {

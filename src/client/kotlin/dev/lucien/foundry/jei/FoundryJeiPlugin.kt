@@ -1,8 +1,8 @@
 package dev.lucien.foundry.jei
 
 import dev.lucien.foundry.Foundry
-import dev.lucien.foundry.recipe.FoundryRecipe
 import dev.lucien.foundry.registry.ModBlocks
+import dev.lucien.foundry.registry.ModRecipes
 import mezz.jei.api.JeiPlugin
 import mezz.jei.api.recipe.types.IRecipeType
 import mezz.jei.api.registration.IRecipeCatalystRegistration
@@ -10,7 +10,6 @@ import mezz.jei.api.registration.IRecipeCategoryRegistration
 import mezz.jei.api.registration.IRecipeRegistration
 import net.minecraft.client.Minecraft
 import net.minecraft.resources.Identifier
-import net.minecraft.world.item.crafting.RecipeManager
 
 @JeiPlugin
 class FoundryJeiPlugin : mezz.jei.api.IModPlugin {
@@ -30,9 +29,10 @@ class FoundryJeiPlugin : mezz.jei.api.IModPlugin {
 
     override fun registerRecipes(registration: IRecipeRegistration) {
         val level = Minecraft.getInstance().level ?: return
-        val manager = level.recipeAccess() as? RecipeManager ?: return
-        val recipes =
-            manager.recipes.mapNotNull { it.value() as? FoundryRecipe }.map(::FoundryRecipeDisplay)
+        val recipes = level.recipeAccess()
+            .getSynchronizedRecipes()
+            .getAllOfType(ModRecipes.FOUNDRY_RECIPE_TYPE)
+            .map { FoundryRecipeDisplay(it.value()) }
         registration.addRecipes(FOUNDRY_RECIPE_TYPE, recipes)
     }
 

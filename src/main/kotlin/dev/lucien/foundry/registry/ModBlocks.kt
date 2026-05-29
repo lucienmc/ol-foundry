@@ -6,6 +6,7 @@ import net.minecraft.core.Registry
 import net.minecraft.core.registries.BuiltInRegistries
 import net.minecraft.resources.Identifier
 import net.minecraft.resources.ResourceKey
+import net.minecraft.world.level.block.AbstractFurnaceBlock
 import net.minecraft.world.level.block.Block
 import net.minecraft.world.level.block.SoundType
 import net.minecraft.world.level.block.state.BlockBehaviour
@@ -20,7 +21,7 @@ object ModBlocks {
                 .strength(3.5f, 10.0f)
                 .requiresCorrectToolForDrops()
                 .sound(SoundType.STONE)
-                .lightLevel { 7 }
+                .lightLevel { if (it.getValue(AbstractFurnaceBlock.LIT)) 13 else 0 }
         )
     )
 
@@ -48,5 +49,6 @@ object ModBlocks {
         )
     }
 
-    fun init() { /* Triggers static initialisation */ }
+    fun init() { /* Triggers static initialisation */
+    }
 }

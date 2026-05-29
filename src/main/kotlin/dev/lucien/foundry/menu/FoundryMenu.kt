@@ -1,9 +1,7 @@
 package dev.lucien.foundry.menu
 
 import dev.lucien.foundry.block.entity.FoundryBlockEntity
-import dev.lucien.foundry.recipe.FoundryRecipeInput
 import dev.lucien.foundry.registry.ModMenuTypes
-import dev.lucien.foundry.registry.ModRecipes
 import net.minecraft.server.level.ServerLevel
 import net.minecraft.world.Container
 import net.minecraft.world.SimpleContainer
@@ -15,7 +13,6 @@ import net.minecraft.world.inventory.SimpleContainerData
 import net.minecraft.world.inventory.Slot
 import net.minecraft.world.item.ItemStack
 import net.minecraft.world.item.Items
-import net.minecraft.world.item.crafting.RecipeManager
 
 class FoundryMenu private constructor(
     containerId: Int,
@@ -41,13 +38,11 @@ class FoundryMenu private constructor(
         checkContainerSize(container, FoundryBlockEntity.INVENTORY_SIZE)
         container.startOpen(inventory.player)
 
-        // ── Input / fuel ──────────────────────────────────────────────────────
         addSlot(object : Slot(container, FoundryBlockEntity.INPUT_SLOT, INPUT_X + 1, INPUT_Y + 1) {
             override fun mayPlace(stack: ItemStack) = isSmeltable(stack)
         })
         addSlot(Slot(container, FoundryBlockEntity.FUEL_SLOT, FUEL_X + 1, FUEL_Y + 1))
 
-        // ── Three output slots (fills left-to-right) ──────────────────────────
         for ((slotIdx, x, y) in OUTPUT_SLOTS) {
             addSlot(object : Slot(container, slotIdx, x + 1, y + 1) {
                 override fun mayPlace(stack: ItemStack) = false
@@ -58,13 +53,11 @@ class FoundryMenu private constructor(
             })
         }
 
-        // ── Byproduct (slag) below Output3 ───────────────────────────────────
         addSlot(object :
             Slot(container, FoundryBlockEntity.BYPRODUCT_SLOT, BYPRODUCT_X + 1, BYPRODUCT_Y + 1) {
             override fun mayPlace(stack: ItemStack) = false
         })
 
-        // ── Lava-bucket slot (below gauge, far left) ──────────────────────────
         addSlot(object : Slot(
             container, FoundryBlockEntity.LAVA_BUCKET_SLOT, LAVA_BUCKET_X + 1, LAVA_BUCKET_Y + 1
         ) {
@@ -76,17 +69,8 @@ class FoundryMenu private constructor(
         addDataSlots(data)
     }
 
-    // ── Recipe check ──────────────────────────────────────────────────────────
-
-    private fun isSmeltable(stack: ItemStack): Boolean {
-        val level = inventory.player.level()
-        val manager = level.recipeAccess() as? RecipeManager ?: return true
-        return manager.getRecipeFor(
-            ModRecipes.FOUNDRY_RECIPE_TYPE, FoundryRecipeInput(stack, false), level
-        ).isPresent
-    }
-
-    // ── Progress accessors (used by FoundryScreen) ────────────────────────────
+    private fun isSmeltable(stack: ItemStack): Boolean =
+        FoundryBlockEntity.isSmeltable(inventory.player.level(), stack)
 
     fun getSmeltProgress(): Int = data.get(0)
     fun getSmeltTotal(): Int = data.get(1).coerceAtLeast(1)
@@ -95,8 +79,6 @@ class FoundryMenu private constructor(
     fun getLavaPercent(): Int = data.get(4)
     fun getLavaMb(): Int = data.get(5)   // 0..4000 mB
     fun isBurning(): Boolean = getFuelBurnLeft() > 0
-
-    // ── Shift-click routing ───────────────────────────────────────────────────
 
     override fun quickMoveStack(player: Player, slotIndex: Int): ItemStack {
         val slot = slots.getOrNull(slotIndex) ?: return ItemStack.EMPTY
@@ -143,15 +125,8 @@ class FoundryMenu private constructor(
         container.stopOpen(player)
     }
 
-    // ── Layout constants — single source of truth for Menu AND Screen ─────────
-    //
-    // The Screen imports FoundryMenu already, so it reads FoundryMenu.INPUT_X etc.
-    // Changing a position here automatically fixes both the slot hitbox and the
-    // rendered slot outline — they can never drift apart.
-
     companion object {
 
-        // Slot positions (top-left corner of the 18×18 slot area, GUI-relative)
         const val INPUT_X = 25
         const val INPUT_Y = 16
         const val FUEL_X = 25
@@ -170,26 +145,23 @@ class FoundryMenu private constructor(
         const val PLAYER_INV_X = 8
         const val PLAYER_INV_Y = 84
 
-        // Flame indicator (between input slot and fuel slot)
         const val FLAME_X = 26
         const val FLAME_Y = 36
         const val FLAME_W = 13
         const val FLAME_H = 14
 
-        // Progress arrow
         const val ARROW_X = 50
         const val ARROW_Y = 35
         const val ARROW_W = 22
         const val ARROW_H = 15
 
-        // Lava gauge (far-left column, above the lava-bucket slot)
         const val BAR_X = 152
         const val BAR_Y = 7
         const val BAR_W = 16
         const val BAR_H = 50
 
         val OUTPUT_SLOTS: List<Triple<Int, Int, Int>> = listOf(
-            Triple(FoundryBlockEntity.OUTPUT_SLOT,   OUTPUT1_X, OUTPUT1_Y),
+            Triple(FoundryBlockEntity.OUTPUT_SLOT, OUTPUT1_X, OUTPUT1_Y),
             Triple(FoundryBlockEntity.OUTPUT_SLOT_2, OUTPUT2_X, OUTPUT2_Y),
             Triple(FoundryBlockEntity.OUTPUT_SLOT_3, OUTPUT3_X, OUTPUT3_Y),
         )

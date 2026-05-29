@@ -11,16 +11,6 @@ import net.minecraft.world.level.material.Fluids
 import net.minecraft.world.level.storage.ValueInput
 import net.minecraft.world.level.storage.ValueOutput
 
-/**
- * Lava fluid tank for the Foundry (capacity: 4 buckets).
- *
- * Owns all fluid logic: the [SingleVariantStorage], bucket consumption,
- * per-tick drain, serialization, and the derived display values used by
- * [ContainerData][net.minecraft.world.inventory.ContainerData].
- *
- * @param onChanged Called whenever the tank contents change (delegates to
- *   [BlockEntity.setChanged][net.minecraft.world.level.block.entity.BlockEntity.setChanged]).
- */
 class FoundryLavaTank(private val onChanged: () -> Unit) {
 
     val storage: SingleVariantStorage<FluidVariant> =
@@ -32,23 +22,10 @@ class FoundryLavaTank(private val onChanged: () -> Unit) {
             override fun onFinalCommit() = onChanged()
         }
 
-    // ── Derived state (used by ContainerData and the Screen) ──────────────────
-
     val hasLava: Boolean get() = storage.amount > 0L
-
-    /** 0–100 fill percentage. */
     val percent: Int get() = if (storage.amount > 0L) ((storage.amount * 100L) / CAPACITY).toInt() else 0
-
-    /** Fill level in milli-buckets (0–4000). */
     val mb: Int get() = (storage.amount / 81L).toInt()
 
-    // ── Bucket slot ───────────────────────────────────────────────────────────
-
-    /**
-     * If [bucketSlot] holds a lava bucket and the tank has room for a full bucket,
-     * inserts the lava and returns the empty bucket replacement. Returns null if
-     * nothing was consumed (slot empty, wrong item, or tank full).
-     */
     fun tryConsumeBucket(bucketSlot: ItemStack): ItemStack? {
         if (bucketSlot.isEmpty || !bucketSlot.`is`(Items.LAVA_BUCKET)) return null
         if (CAPACITY - storage.amount < FluidConstants.BUCKET) return null
@@ -59,17 +36,12 @@ class FoundryLavaTank(private val onChanged: () -> Unit) {
         return ItemStack(Items.BUCKET)
     }
 
-    // ── Per-tick boost drain ──────────────────────────────────────────────────
-
-    /** Drains [DRAIN_PER_TICK] droplets of lava. Call once per boosted smelting tick. */
     fun drainForBoost() {
         Transaction.openOuter().use { tx ->
             storage.extract(FluidVariant.of(Fluids.LAVA), DRAIN_PER_TICK, tx)
             tx.commit()
         }
     }
-
-    // ── Serialization ─────────────────────────────────────────────────────────
 
     fun save(output: ValueOutput) {
         output.putLong("lava_amount", storage.amount)
@@ -83,13 +55,8 @@ class FoundryLavaTank(private val onChanged: () -> Unit) {
         }
     }
 
-    // ── Constants ─────────────────────────────────────────────────────────────
-
     companion object {
-        /** Maximum tank capacity: 4 buckets in Fabric droplet units. */
         const val CAPACITY: Long = FluidConstants.BUCKET * 4
-
-        /** Lava drained per boosted smelting tick (~0.025 buckets per recipe at 4× speed). */
         const val DRAIN_PER_TICK: Long = FluidConstants.BUCKET / 1600
     }
 }

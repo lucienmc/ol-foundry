@@ -29,8 +29,6 @@ class FoundryScreen(
         private val SLOT_SPRITE = Identifier.withDefaultNamespace("container/slot")
 
 
-        // Lava fill area: 1-px inset from the gauge border.
-        // BAR_* live in FoundryMenu (single source of truth); only the derived values stay here.
         private const val FILL_X = FoundryMenu.BAR_X + 1
         private const val FILL_Y = FoundryMenu.BAR_Y + 1
         private const val FILL_W = FoundryMenu.BAR_W - 2
@@ -52,7 +50,6 @@ class FoundryScreen(
         val xo = leftPos;
         val yo = topPos
 
-        // 1. Gray background sheet
         graphics.blit(
             RenderPipelines.GUI_TEXTURED,
             CONTAINER_TEXTURE,
@@ -66,12 +63,10 @@ class FoundryScreen(
             BACKGROUND_TEXTURE_HEIGHT
         )
 
-        // 2. Slot outlines (vanilla slot sprite, one per slot position)
         for ((sx, sy) in FoundryMenu.ALL_SLOT_POSITIONS) {
             graphics.blitSprite(RenderPipelines.GUI_TEXTURED, SLOT_SPRITE, xo + sx, yo + sy, 18, 18)
         }
 
-        // 3. Animated flame (overlays the static; shrinks from top as fuel depletes)
         if (menu.isBurning()) {
             val fireH =
                 (menu.getFuelBurnLeft() * FoundryMenu.FLAME_H / menu.getFuelBurnMax()).coerceIn(
@@ -92,7 +87,6 @@ class FoundryScreen(
             )
         }
 
-        // 4. Animated arrow (overlays the static; grows left→right as smelting progresses)
         val arrowW =
             (menu.getSmeltProgress() * FoundryMenu.ARROW_W / menu.getSmeltTotal()).coerceIn(
                 0, FoundryMenu.ARROW_W
@@ -127,7 +121,6 @@ class FoundryScreen(
         super.extractRenderState(graphics, mouseX, mouseY, delta)
         extractTooltip(graphics, mouseX, mouseY)
 
-        // Lava gauge tooltip
         val barAbsX = leftPos + FoundryMenu.BAR_X
         val barAbsY = topPos + FoundryMenu.BAR_Y
         if (mouseX in barAbsX until barAbsX + FoundryMenu.BAR_W && mouseY in barAbsY until barAbsY + FoundryMenu.BAR_H) {
@@ -142,11 +135,6 @@ class FoundryScreen(
 
     // ── Lava fill helper ──────────────────────────────────────────────────────
 
-    /**
-     * Tiles the animated [LAVA_FILL] GUI sprite vertically to fill [width]×[height].
-     * The sprite is 16×128 (8 frames of 16×16); the animation system advances frames
-     * automatically via lava_fill.png.mcmeta — no block-atlas access needed.
-     */
     private fun renderLavaTile(
         graphics: GuiGraphicsExtractor,
         x: Int, y: Int, width: Int, height: Int,

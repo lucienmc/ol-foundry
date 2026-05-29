@@ -10,55 +10,44 @@ import net.fabricmc.fabric.api.transfer.v1.fluid.FluidConstants
 import net.fabricmc.fabric.api.transfer.v1.fluid.FluidVariant
 import net.fabricmc.fabric.api.transfer.v1.transaction.Transaction
 import net.minecraft.core.BlockPos
-import net.minecraft.core.Direction
+import net.minecraft.core.particles.ParticleTypes
 import net.minecraft.server.level.ServerLevel
 import net.minecraft.server.level.ServerPlayer
+import net.minecraft.sounds.SoundEvents
+import net.minecraft.sounds.SoundSource
+import net.minecraft.util.RandomSource
 import net.minecraft.world.Containers
 import net.minecraft.world.InteractionHand
 import net.minecraft.world.InteractionResult
 import net.minecraft.world.entity.player.Player
 import net.minecraft.world.item.ItemStack
 import net.minecraft.world.item.Items
-import net.minecraft.world.item.context.BlockPlaceContext
 import net.minecraft.world.level.Level
-import net.minecraft.world.level.block.BaseEntityBlock
+import net.minecraft.world.level.block.AbstractFurnaceBlock
 import net.minecraft.world.level.block.RenderShape
 import net.minecraft.world.level.block.entity.BlockEntity
 import net.minecraft.world.level.block.entity.BlockEntityTicker
 import net.minecraft.world.level.block.entity.BlockEntityType
 import net.minecraft.world.level.block.state.BlockState
-import net.minecraft.world.level.block.state.StateDefinition
-import net.minecraft.world.level.block.state.properties.BlockStateProperties
-import net.minecraft.world.level.block.state.properties.EnumProperty
 import net.minecraft.world.level.material.Fluids
 import net.minecraft.world.phys.BlockHitResult
 
-class FoundryBlock(properties: Properties) : BaseEntityBlock(properties) {
+class FoundryBlock(properties: Properties) : AbstractFurnaceBlock(properties) {
 
-    companion object {
-        val FACING: EnumProperty<Direction> = BlockStateProperties.HORIZONTAL_FACING
-    }
-
-    init {
-        registerDefaultState(stateDefinition.any().setValue(FACING, Direction.NORTH))
-    }
-
-    override fun createBlockStateDefinition(builder: StateDefinition.Builder<net.minecraft.world.level.block.Block, BlockState>) {
-        builder.add(FACING)
-    }
-
-    /** Face the player who placed the block (same convention as vanilla furnace). */
-    override fun getStateForPlacement(context: BlockPlaceContext): BlockState =
-        defaultBlockState().setValue(FACING, context.horizontalDirection.opposite)
-
-    override fun codec(): MapCodec<out BaseEntityBlock> = simpleCodec(::FoundryBlock)
+    override fun codec(): MapCodec<out AbstractFurnaceBlock> = simpleCodec(::FoundryBlock)
 
     override fun newBlockEntity(pos: BlockPos, state: BlockState): BlockEntity =
         FoundryBlockEntity(pos, state)
 
     override fun getRenderShape(state: BlockState): RenderShape = RenderShape.MODEL
 
-    /** Right-click with lava bucket → fill the tank; anything else → open GUI. */
+    override fun openContainer(level: Level, pos: BlockPos, player: Player) {
+        val entity = level.getBlockEntity(pos)
+        if (entity is FoundryBlockEntity && player is ServerPlayer) {
+            player.openMenu(entity)
+        }
+    }
+
     override fun useItemOn(
         stack: ItemStack,
         state: BlockState,
@@ -72,28 +61,14 @@ class FoundryBlock(properties: Properties) : BaseEntityBlock(properties) {
         if (level.isClientSide) return InteractionResult.SUCCESS
         val entity =
             level.getBlockEntity(pos) as? FoundryBlockEntity ?: return InteractionResult.PASS
-        val lavaVariant = FluidVariant.of(Fluids.LAVA)
-        val space = FoundryLavaTank.CAPACITY - entity.lava.storage.amount
-        if (space < FluidConstants.BUCKET) return InteractionResult.SUCCESS
+        if (FoundryLavaTank.CAPACITY - entity.lava.storage.amount < FluidConstants.BUCKET) return InteractionResult.SUCCESS
         Transaction.openOuter().use { tx ->
-            entity.lava.storage.insert(lavaVariant, FluidConstants.BUCKET, tx)
+            entity.lava.storage.insert(FluidVariant.of(Fluids.LAVA), FluidConstants.BUCKET, tx)
             tx.commit()
         }
         if (!player.isCreative) {
             stack.shrink(1)
             player.addItem(ItemStack(Items.BUCKET))
-        }
-        return InteractionResult.SUCCESS
-    }
-
-    override fun useWithoutItem(
-        state: BlockState, level: Level, pos: BlockPos, player: Player, hit: BlockHitResult
-    ): InteractionResult {
-        if (!level.isClientSide && player is ServerPlayer) {
-            val entity = level.getBlockEntity(pos)
-            if (entity is FoundryBlockEntity) {
-                player.openMenu(entity)
-            }
         }
         return InteractionResult.SUCCESS
     }
@@ -104,25 +79,15 @@ class FoundryBlock(properties: Properties) : BaseEntityBlock(properties) {
         type, ModBlockEntities.FOUNDRY
     ) { lvl, _, _, entity -> FoundryBlockEntity.tick(lvl, entity) }
 
-    /**
-     * Drop inventory contents on block removal (pistons, explosions, etc.).
-     * Also called after player breaks in survival.
-     */
     override fun affectNeighborsAfterRemoval(
         state: BlockState, world: ServerLevel, pos: BlockPos, movedByPiston: Boolean
     ) {
         val entity = world.getBlockEntity(pos)
-        if (entity is FoundryBlockEntity) {
-            Containers.dropContents(world, pos, entity)
-        }
+        if (entity is FoundryBlockEntity) Containers.dropContents(world, pos, entity)
         super.affectNeighborsAfterRemoval(state, world, pos, movedByPiston)
     }
 
-    /**
-     * In creative mode, Minecraft skips loot tables so the block never drops.
-     * We override this to forcibly drop the foundry item when the tank has lava —
-     * otherwise the player would lose the fluid with no recourse.
-     */
+    // In creative mode loot tables are skipped — drop the item manually so lava isn't silently lost.
     override fun playerWillDestroy(
         level: Level, pos: BlockPos, state: BlockState, player: Player
     ): BlockState {
@@ -141,5 +106,51 @@ class FoundryBlock(properties: Properties) : BaseEntityBlock(properties) {
             }
         }
         return super.playerWillDestroy(level, pos, state, player)
+    }
+
+    override fun animateTick(state: BlockState, level: Level, pos: BlockPos, random: RandomSource) {
+        if (!state.getValue(LIT)) return
+
+        val x = pos.x + 0.5
+        val y = pos.y.toDouble()
+        val z = pos.z + 0.5
+
+        if (random.nextDouble() < 0.1) {
+            level.playLocalSound(
+                x, y, z, SoundEvents.BLASTFURNACE_FIRE_CRACKLE, SoundSource.BLOCKS, 1f, 1f, false
+            )
+        }
+
+        level.addParticle(ParticleTypes.SMOKE, x, y + 1.8, z, 0.0, 0.0, 0.0)
+
+        if (random.nextDouble() < 0.3) {
+            val facing = state.getValue(FACING)
+            val dx = facing.stepX * 0.52
+            val dz = facing.stepZ * 0.52
+            val perpX = facing.clockWise.stepX.toDouble()
+            val perpZ = facing.clockWise.stepZ.toDouble()
+            repeat(2) {
+                val offY = y + 0.35 + random.nextDouble() * 0.2
+                val side = (random.nextDouble() - 0.5) * 0.5
+                level.addParticle(
+                    ParticleTypes.FLAME,
+                    x + dx + perpX * side,
+                    offY,
+                    z + dz + perpZ * side,
+                    0.0,
+                    0.0,
+                    0.0
+                )
+                level.addParticle(
+                    ParticleTypes.SMOKE,
+                    x + dx + perpX * side,
+                    offY,
+                    z + dz + perpZ * side,
+                    0.0,
+                    0.0,
+                    0.0
+                )
+            }
+        }
     }
 }
