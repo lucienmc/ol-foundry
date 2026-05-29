@@ -1,0 +1,25 @@
+{
+  "type": "foundry:foundry_smelting",
+  "bonus_requires_lava": true,
+  "bonus_result_chance": 1.0,
+  "cooking_time": 100,
+  "experience": 0.05,
+  "ingredient": "foundry:slag",
+  "result": {
+    "id": "minecraft:iron_nugget"
+  },
+  "result_pool": [
+    {
+      "result": {
+        "id": "minecraft:iron_nugget"
+      },
+      "weight": 70
+    },
+    {
+      "result": {
+        "id": "minecraft:gold_nugget"
+      },
+      "weight": 30
+    }
+  ]
+}

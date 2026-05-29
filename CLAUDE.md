@@ -242,6 +242,12 @@ Indices 4 & 5 are server-derived (read-only on the client).
   so the 1.5× stays integer. Fuel type also still affects burn *duration* (vanilla `fuelValues()`; slag = 800).
 - **Byproduct (slag)**: `byproductChance` field — floor = guaranteed count, fraction = roll for +1 extra
   (supports `>1` for bulk recipes like raw-ore-blocks).
+- **Weighted result pools**: `FoundryRecipe.resultPool: List<WeightedResult>` (optional). When non-empty,
+  each produced item is a weighted pick (`recipe.rollResult(random)`) and `result` is just the
+  representative output for viewers. Used by **slag reprocessing** (`slag → iron 70 / gold 30` nugget;
+  lava grants one extra roll via `bonusResultChance = 1` + `bonusRequiresLava`). `canOutput` requires an
+  *empty* result slot for pooled recipes (the pick isn't known ahead of time). JEI shows the pool as a
+  cycling output with per-entry odds, so left-clicking any nugget lists the recipe.
 - **Extends `AbstractFurnaceBlock`**: gives FACING + LIT blockstate, GUI open via `openContainer`, and
   the recipe-book plumbing for free. `FoundryBlockEntity.serverTick` keeps `LIT` in sync with `isBurning`.
   `ModBlocks` still sets `.lightLevel { if (LIT) 13 else 0 }` (NOT automatic). `animateTick` adds the

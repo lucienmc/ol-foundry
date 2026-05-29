@@ -12,6 +12,19 @@ data class FoundryRecipeDisplay(val recipe: FoundryRecipe) {
     val ingredient: Ingredient get() = recipe.ingredient
     val outputTemplate: ItemStackTemplate get() = recipe.result
 
+    val isPooled: Boolean get() = recipe.isPooled
+
+    /** Stacks shown in the primary output slot — the pool entries, cycling, or just [outputTemplate]. */
+    val resultStacks: List<ItemStack>
+        get() = if (isPooled) recipe.resultPool.map { it.result.create() } else listOf(recipe.result.create())
+
+    /** (stack, "x%") for each pool entry, normalised over the total weight. */
+    val resultOdds: List<Pair<ItemStack, String>>
+        get() {
+            val total = recipe.resultPool.sumOf { it.weight }.coerceAtLeast(1)
+            return recipe.resultPool.map { it.result.create() to "${it.weight * 100 / total}%" }
+        }
+
     val hasByproduct: Boolean get() = recipe.byproductChance > 0f
 
     /** Slag produced every craft (floor of the chance). */

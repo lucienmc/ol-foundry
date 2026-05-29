@@ -202,8 +202,12 @@ class FoundryBlockEntity(pos: BlockPos, blockState: BlockState) :
     private fun canOutput(recipe: FoundryRecipe): Boolean {
         if (items[INPUT_SLOT].isEmpty) return false
 
-        val result = recipe.result.create()
-        if (RESULT_SLOTS.none { canFitInSlot(it, result) }) return false
+        // A pooled recipe's exact output isn't known until it's rolled, so require an empty
+        // result slot to guarantee whatever is produced can be placed.
+        val hasOutputRoom =
+            if (recipe.isPooled) RESULT_SLOTS.any { items[it].isEmpty }
+            else recipe.result.create().let { result -> RESULT_SLOTS.any { canFitInSlot(it, result) } }
+        if (!hasOutputRoom) return false
 
         if (recipe.byproductChance > 0f) {
             val minSlag = recipe.byproductChance.toInt().coerceAtLeast(1)
@@ -214,16 +218,14 @@ class FoundryBlockEntity(pos: BlockPos, blockState: BlockState) :
     }
 
     private fun craftResult(recipe: FoundryRecipe, level: ServerLevel) {
-        val result = recipe.result.create()
-
         items[INPUT_SLOT].shrink(1)
-        addToResultSlots(result)
+        addToResultSlots(recipe.rollResult(level.random))
         state.storedXp += recipe.experience
 
         if (recipe.bonusResultChance > 0f) {
             val lavaPreconditionMet = !recipe.bonusRequiresLava || lava.hasLava
             val bonusRolled = level.random.nextFloat() < recipe.bonusResultChance
-            if (lavaPreconditionMet && bonusRolled) addToResultSlots(result.copy())
+            if (lavaPreconditionMet && bonusRolled) addToResultSlots(recipe.rollResult(level.random))
         }
 
         // floor(byproductChance) = guaranteed slag; fraction = roll for +1 (supports >1 for bulk recipes)

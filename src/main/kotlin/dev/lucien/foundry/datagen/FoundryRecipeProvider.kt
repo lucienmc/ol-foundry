@@ -2,6 +2,7 @@ package dev.lucien.foundry.datagen
 
 import dev.lucien.foundry.Foundry
 import dev.lucien.foundry.recipe.FoundryRecipe
+import dev.lucien.foundry.recipe.WeightedResult
 import dev.lucien.foundry.registry.ModBlocks
 import dev.lucien.foundry.registry.ModItems
 import net.fabricmc.fabric.api.datagen.v1.FabricPackOutput
@@ -117,6 +118,16 @@ class FoundryRecipeProvider(
                 byproductChance = 0.0f, cookingTime = 400, experience = 2.0f,
                 bonus = BonusConfig(0.5f, requiresLava = true)
             )
+
+            // ── Slag reprocessing → weighted metal nugget (lava recovers a 2nd) ───────
+            reprocess(
+                "slag_reprocessing", ModItems.SLAG,
+                cookingTime = 100, experience = 0.05f,
+                pool = listOf(
+                    Items.IRON_NUGGET to 70,
+                    Items.GOLD_NUGGET to 30,
+                ),
+            )
         }
 
         private fun smelt(
@@ -142,6 +153,36 @@ class FoundryRecipeProvider(
                     experience = experience,
                     bonusResultChance = bonus.chance,
                     bonusRequiresLava = bonus.requiresLava,
+                ),
+                null,
+            )
+        }
+
+        /**
+         * A reprocessing recipe whose output is drawn from a weighted [pool] of nuggets.
+         * Lava in the tank yields one extra roll (`bonusResultChance = 1`, lava-gated).
+         */
+        private fun reprocess(
+            name: String,
+            input: Item,
+            cookingTime: Int,
+            experience: Float,
+            pool: List<Pair<Item, Int>>,
+        ) {
+            val key = ResourceKey.create(
+                Registries.RECIPE,
+                Identifier.fromNamespaceAndPath(Foundry.MOD_ID, "foundry/$name"),
+            )
+            output.accept(
+                key,
+                FoundryRecipe(
+                    ingredient = Ingredient.of(input),
+                    result = ItemStackTemplate(pool.first().first),  // representative output
+                    cookingTime = cookingTime,
+                    experience = experience,
+                    bonusResultChance = 1.0f,
+                    bonusRequiresLava = true,
+                    resultPool = pool.map { (item, weight) -> WeightedResult(ItemStackTemplate(item), weight) },
                 ),
                 null,
             )

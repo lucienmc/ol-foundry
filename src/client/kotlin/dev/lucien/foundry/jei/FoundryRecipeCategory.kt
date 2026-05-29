@@ -35,18 +35,30 @@ class FoundryRecipeCategory(guiHelper: IGuiHelper) : IRecipeCategory<FoundryReci
         builder.addInputSlot(INPUT_X, SLOT_Y)
             .add(display.ingredient)
 
-        builder.addOutputSlot(OUTPUT_X, SLOT_Y)
-            .add(display.outputTemplate)
-            .addRichTooltipCallback { _, tooltip ->
-                tooltip.add(
-                    Component.literal("%.1f XP".format(display.experience))
-                        .withStyle(ChatFormatting.GOLD)
-                )
-                tooltip.add(
-                    Component.literal("%.1fs cooking time".format(display.cookingTimeSeconds))
-                        .withStyle(ChatFormatting.GRAY)
-                )
+        val primary = builder.addOutputSlot(OUTPUT_X, SLOT_Y)
+        if (display.isPooled) primary.addItemStacks(display.resultStacks) else primary.add(display.outputTemplate)
+        primary.addRichTooltipCallback { _, tooltip ->
+            tooltip.add(
+                Component.literal("%.1f XP".format(display.experience)).withStyle(ChatFormatting.GOLD)
+            )
+            tooltip.add(
+                Component.literal("%.1fs cooking time".format(display.cookingTimeSeconds))
+                    .withStyle(ChatFormatting.GRAY)
+            )
+            if (display.isPooled) {
+                display.resultOdds.forEach { (stack, pct) ->
+                    tooltip.add(
+                        Component.literal("$pct  ${stack.hoverName.string}")
+                            .withStyle(ChatFormatting.DARK_GRAY)
+                    )
+                }
+                if (display.bonusRequiresLava) {
+                    tooltip.add(
+                        Component.literal("Lava: +1 extra nugget").withStyle(ChatFormatting.GOLD)
+                    )
+                }
             }
+        }
 
         var nextOutputY = SLOT_Y + 26
         if (display.hasByproduct) {
@@ -71,7 +83,7 @@ class FoundryRecipeCategory(guiHelper: IGuiHelper) : IRecipeCategory<FoundryReci
             nextOutputY += 26
         }
 
-        if (display.hasBonusResult) {
+        if (display.hasBonusResult && !display.isPooled) {
             builder.addOutputSlot(OUTPUT_X, nextOutputY)
                 .add(display.outputTemplate)
                 .addRichTooltipCallback { _, tooltip ->
