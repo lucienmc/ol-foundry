@@ -17,6 +17,7 @@ import net.minecraft.network.protocol.Packet
 import net.minecraft.network.protocol.game.ClientGamePacketListener
 import net.minecraft.network.protocol.game.ClientboundBlockEntityDataPacket
 import net.minecraft.server.level.ServerLevel
+import net.minecraft.tags.ItemTags
 import net.minecraft.world.Container
 import net.minecraft.world.ContainerHelper
 import net.minecraft.world.MenuProvider
@@ -175,6 +176,7 @@ class FoundryBlockEntity(pos: BlockPos, blockState: BlockState) :
         val vanillaTime = level.server.fuelValues().burnDuration(stack)
         if (vanillaTime > 0) return vanillaTime
         if (stack.`is`(ModItems.SLAG)) return 800
+        if (stack.`is`(Items.MAGMA_CREAM)) return MAGMA_CREAM_BURN_TIME
 
         return 0
     }
@@ -285,17 +287,27 @@ class FoundryBlockEntity(pos: BlockPos, blockState: BlockState) :
         /**
          * Progress is tracked at [PROGRESS_RESOLUTION]× the recipe cook time so fractional speed
          * multipliers stay whole numbers. Per-tick progress by fuel (before the lava multiplier):
-         * coal/charcoal → 1.5×, blaze rod → 3×. Lava in the tank doubles whichever is active.
+         * any fuel → 1×, coal/charcoal → 1.5×, magma cream → 2×, blaze rod → 3×.
+         * Lava in the tank doubles whichever is active.
          */
         const val PROGRESS_RESOLUTION = 2
         const val PROGRESS_DECAY = 2
-        const val BASE_FUEL_SPEED = 3    // 1.5× × PROGRESS_RESOLUTION
+        const val BASE_FUEL_SPEED = 2    // 1×   × PROGRESS_RESOLUTION (any fuel)
+        const val COAL_FUEL_SPEED = 3    // 1.5× × PROGRESS_RESOLUTION
+        const val MAGMA_FUEL_SPEED = 4   // 2×   × PROGRESS_RESOLUTION
         const val BLAZE_FUEL_SPEED = 6   // 3×   × PROGRESS_RESOLUTION
         const val LAVA_SPEED_MULTIPLIER = 2
 
+        /** Burn time (ticks) for magma cream, which is not a vanilla furnace fuel. */
+        const val MAGMA_CREAM_BURN_TIME = 1000
+
         /** Per-tick smelting speed granted by [stack] as fuel, before the lava multiplier. */
-        fun fuelSpeedFor(stack: ItemStack): Int =
-            if (stack.`is`(Items.BLAZE_ROD)) BLAZE_FUEL_SPEED else BASE_FUEL_SPEED
+        fun fuelSpeedFor(stack: ItemStack): Int = when {
+            stack.`is`(Items.BLAZE_ROD) -> BLAZE_FUEL_SPEED
+            stack.`is`(Items.MAGMA_CREAM) -> MAGMA_FUEL_SPEED
+            stack.`is`(ItemTags.COALS) -> COAL_FUEL_SPEED
+            else -> BASE_FUEL_SPEED
+        }
 
         /** The three result slots, filled left-to-right. */
         val RESULT_SLOTS = intArrayOf(OUTPUT_SLOT, OUTPUT_SLOT_2, OUTPUT_SLOT_3)

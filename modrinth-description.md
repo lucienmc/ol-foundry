@@ -6,9 +6,11 @@ Recipes are data-driven and show up in JEI.
 
 ## Fuel and lava
 
-Smelting speed depends on the fuel:
+Any furnace fuel works (plus a couple that normally don't burn). Smelting speed depends on which one you use:
 
+- Most fuels — 1×
 - Coal / charcoal — 1.5×
+- Magma cream — 2×
 - Blaze rod — 3×
 
 The Foundry has a 4,000 mB (4 bucket) lava tank. While it holds lava, smelting runs twice as fast — so coal becomes 3× and a blaze rod 6× — and the tank drains slowly while it works.
