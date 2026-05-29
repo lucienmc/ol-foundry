@@ -11,10 +11,18 @@ data class FoundryRecipeDisplay(val recipe: FoundryRecipe) {
 
     val ingredient: Ingredient get() = recipe.ingredient
     val outputTemplate: ItemStackTemplate get() = recipe.result
-    val byproduct: ItemStack get() = ItemStack(ModItems.SLAG)
 
-    val byproductChance: Float get() = recipe.byproductChance
-    val byproductChancePercent: String get() = "${(byproductChance * 100).toInt()}%"
+    val hasByproduct: Boolean get() = recipe.byproductChance > 0f
+
+    /** Slag produced every craft (floor of the chance). */
+    val byproductGuaranteed: Int get() = recipe.byproductChance.toInt()
+
+    /** Chance (0–1) of one extra slag beyond the guaranteed amount. */
+    val byproductExtraChance: Float get() = recipe.byproductChance - byproductGuaranteed
+    val byproductExtraPercent: String get() = "${(byproductExtraChance * 100).toInt()}%"
+
+    /** Stack shown in the byproduct slot — at least 1 so the icon renders. */
+    val byproductStack: ItemStack get() = ItemStack(ModItems.SLAG, byproductGuaranteed.coerceAtLeast(1))
 
     val hasBonusResult: Boolean get() = recipe.bonusResultChance > 0f
     val bonusResultChance: Float get() = recipe.bonusResultChance

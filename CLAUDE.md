@@ -4,11 +4,13 @@
 Fabric mod for Minecraft 26.1.2, written in Kotlin.  
 Mod ID: `foundry`. Main class: `dev.lucien.foundry.Foundry`.
 
-Custom block: **Foundry** — a blast-furnace-like smelter with:
-- Lava fluid tank (4-bucket capacity) that boosts smelting speed 4× (vs 2× without lava)
+Custom block: **Foundry** — a blast-furnace-like smelter (extends `AbstractFurnaceBlock`) with:
+- Lava fluid tank (4-bucket / 4000 mB capacity) that **doubles** the active fuel's smelting speed
+- Fuel-tiered smelting speed: coal/charcoal = 1.5×, blaze rod = 3× (lava doubles each)
 - 3 output slots (primary result fills left-to-right)
 - 1 byproduct slot (slag)
 - 1 lava-bucket input slot (auto-consumes lava buckets into the tank each tick)
+- Directional hopper access via `WorldlyContainer` (top = input, sides = fuel + lava, bottom = extract)
 
 ---
 
@@ -16,11 +18,17 @@ Custom block: **Foundry** — a blast-furnace-like smelter with:
 
 | File | Purpose |
 |------|---------|
-| `src/main/kotlin/.../block/entity/FoundryBlockEntity.kt` | Server-side orchestration — tick, recipe, XP, serialization |
+| `src/main/kotlin/.../block/FoundryBlock.kt` | `AbstractFurnaceBlock` subclass — LIT state, facing, interaction, particles |
+| `src/main/kotlin/.../block/entity/FoundryBlockEntity.kt` | Server-side orchestration — tick, recipe, XP, serialization, `WorldlyContainer` rules |
 | `src/main/kotlin/.../block/entity/FoundryState.kt` | Mutable smelting state + its serialization |
-| `src/main/kotlin/.../block/entity/FoundryLavaTank.kt` | All fluid logic: storage, bucket consumption, drain, serialization |
+| `src/main/kotlin/.../block/entity/FoundryLavaTank.kt` | All fluid logic: storage, bucket consumption, drain, mB conversion, serialization |
+| `src/main/kotlin/.../item/FoundryItem.kt` | `BlockItem` that restores stored lava on placement |
+| `src/main/kotlin/.../item/LavaStorageComponent.kt` | Typed `DataComponentType` payload (lava mB carried by the item) |
 | `src/main/kotlin/.../menu/FoundryMenu.kt` | Container menu — slot registration + ALL layout constants |
 | `src/client/kotlin/.../screen/FoundryScreen.kt` | GUI rendering |
+| `src/client/kotlin/.../FoundryClient.kt` | Client init — screen registration + lava tooltip (`ItemTooltipCallback`) |
+| `src/client/kotlin/.../jei/FoundryRecipeCategory.kt` | JEI category — slots, fuel tooltips, byproduct display |
+| `src/client/kotlin/.../jei/FoundryJeiPlugin.kt` | JEI plugin — reads recipes via `recipeAccess().synchronizedRecipes` |
 | `src/main/resources/assets/foundry/textures/gui/container/foundry.png` | 256×256 palette-indexed GUI sheet |
 | `assets/foundry/textures/gui/sprites/container/foundry/lit_progress.png` | Animated flame sprite |
 | `assets/foundry/textures/gui/sprites/container/foundry/burn_progress.png` | Animated arrow sprite |
@@ -34,12 +42,13 @@ Custom block: **Foundry** — a blast-furnace-like smelter with:
 The block entity is split into three focused classes:
 
 ### `FoundryState` — smelting state
-Owns the five mutable smelting fields and their serialization:
+Owns the six mutable smelting fields and their serialization:
 ```kotlin
 var fuelBurnTimeLeft: Int = 0
 var maxFuelBurnTime: Int = 0
 var smeltProgress: Int = 0
-var smeltTotal: Int = DEFAULT_COOK_TIME   // 200
+var smeltTotal: Int = DEFAULT_COOK_TIME   // 200 placeholder; set to cookingTime * PROGRESS_RESOLUTION when smelting
+var fuelSpeed: Int = 0                     // per-tick progress of the burning fuel (see FoundryBlockEntity)
 var storedXp: Float = 0f
 
 val isBurning: Boolean get() = fuelBurnTimeLeft > 0
@@ -49,28 +58,57 @@ fun load(input: ValueInput) { ... }
 ```
 
 ### `FoundryLavaTank` — fluid logic
-Owns everything fluid-related:
+Owns everything fluid-related, including the mB↔droplet conversion (no magic `81`/`4000` elsewhere):
 ```kotlin
 val storage: SingleVariantStorage<FluidVariant>   // exposed to pipes via ModBlockEntities
 val hasLava: Boolean
-val percent: Int   // 0–100, for ContainerData slot 4
-val mb: Int        // 0–4000 mB, for ContainerData slot 5
+val percent: Int   // 0–100, for ContainerData DATA_LAVA_PERCENT
+val mb: Int        // 0–4000 mB, for ContainerData DATA_LAVA_MB
 
+fun fillFromMb(mb: Int)                                    // set tank from a stored-item amount (clamped)
 fun tryConsumeBucket(bucketSlot: ItemStack): ItemStack?   // returns empty bucket or null
 fun drainForBoost()                                        // call once per boosted tick
 fun save(output: ValueOutput)
 fun load(input: ValueInput)
 
 companion object {
-    val CAPACITY: Long = FluidConstants.BUCKET * 4
-    val DRAIN_PER_TICK: Long = FluidConstants.BUCKET / 1600
+    const val CAPACITY: Long = FluidConstants.BUCKET * 4
+    const val DRAIN_PER_TICK: Long = FluidConstants.BUCKET / 1600
+    const val DROPLETS_PER_MB: Long = FluidConstants.BUCKET / 1000   // = 81
+    val CAPACITY_MB: Int = (CAPACITY / DROPLETS_PER_MB).toInt()      // = 4000 (used in tooltips)
 }
 ```
 
 ### `FoundryBlockEntity` — orchestration
 Holds `val lava = FoundryLavaTank { setChanged() }` and `val state = FoundryState()`.  
-Owns: inventory, ContainerData, tick logic, recipe matching, XP, MenuProvider boilerplate.  
+Implements `ImplementedContainer`, `WorldlyContainer`, `MenuProvider`.  
+Owns: inventory, ContainerData, tick logic, recipe matching, XP, fuel-speed tiers, hopper rules.  
 Note: constructor parameter is `blockState: BlockState` (not `state`) to avoid shadowing the `state` property.
+
+**Fuel-speed model** (companion constants):
+```kotlin
+const val PROGRESS_RESOLUTION = 2     // smeltTotal = cookingTime * 2, keeps 1.5× integer
+const val PROGRESS_DECAY = 2          // progress lost per tick when not burning
+const val BASE_FUEL_SPEED = 3         // coal/charcoal → 1.5×
+const val BLAZE_FUEL_SPEED = 6        // blaze rod    → 3×
+const val LAVA_SPEED_MULTIPLIER = 2   // lava doubles the active fuel speed
+fun fuelSpeedFor(stack): Int          // BLAZE_ROD → 6, else 3
+```
+`tryStartFuel` records `state.fuelSpeed = fuelSpeedFor(fuel)`; each smelting tick adds
+`fuelSpeed * (lava ? 2 : 1)` to `smeltProgress`.
+
+**Recipe matching is cross-side** — always via `level.recipeAccess().synchronizedRecipes`
+(`getFirstMatch` / `getAllOfType`), never `getRecipeFor`/`getAllRecipesFor` (those don't exist
+on the client `RecipeAccess`). `ModRecipes.init()` registers the serializer with
+`RecipeSynchronization.synchronizeRecipeSerializer(...)` so the client has the recipes.
+
+**Hopper access (`WorldlyContainer`)**:
+```kotlin
+getSlotsForFace: UP → INPUT_SLOT, DOWN → EXTRACT_SLOTS, else → FUEL_SLOT + LAVA_BUCKET_SLOT
+canPlaceItemThroughFace: INPUT → isSmeltable; FUEL → not a lava bucket && not smeltable;
+                         LAVA_BUCKET → is lava bucket
+canTakeItemThroughFace:  index in EXTRACT_SLOTS
+```
 
 Pipe access wired in `ModBlockEntities`:
 ```kotlin
@@ -90,7 +128,23 @@ const val OUTPUT_SLOT_3     = 4   // overflow
 const val BYPRODUCT_SLOT    = 5   // slag
 const val LAVA_BUCKET_SLOT  = 6
 const val INVENTORY_SIZE    = 7
+
+// Slot groups (single source of truth for face access + insertion loops)
+val RESULT_SLOTS  = intArrayOf(OUTPUT_SLOT, OUTPUT_SLOT_2, OUTPUT_SLOT_3)
+val EXTRACT_SLOTS = intArrayOf(OUTPUT_SLOT, OUTPUT_SLOT_2, OUTPUT_SLOT_3, BYPRODUCT_SLOT)
+
+// ContainerData indices — shared with FoundryMenu's accessors (no magic 0..5)
+const val DATA_SMELT_PROGRESS = 0
+const val DATA_SMELT_TOTAL    = 1
+const val DATA_FUEL_LEFT      = 2
+const val DATA_FUEL_MAX       = 3
+const val DATA_LAVA_PERCENT   = 4
+const val DATA_LAVA_MB        = 5
+const val DATA_COUNT          = 6
 ```
+
+Insertion is unified through `insertInto(slotIndex, item)` (built on `canFitInSlot`); `addToResultSlots`
+and the byproduct path both use it.
 
 ---
 
@@ -132,14 +186,20 @@ val ALL_SLOT_POSITIONS: List<Pair<Int, Int>>     // (x, y) for every slot
 
 ## ContainerData Slots (synced to client)
 
-| Index | Value | Source |
-|-------|-------|--------|
-| 0 | `smeltProgress` | `state.smeltProgress` |
-| 1 | `smeltTotal` | `state.smeltTotal` |
-| 2 | `fuelBurnTimeLeft` (capped at Short.MAX_VALUE) | `state.fuelBurnTimeLeft` |
-| 3 | `maxFuelBurnTime` (capped at Short.MAX_VALUE) | `state.maxFuelBurnTime` |
-| 4 | lava % (0–100) | `lava.percent` |
-| 5 | lava in mB (0–4000) | `lava.mb` |
+Indices are the `DATA_*` constants above — both the entity's `ContainerData` and `FoundryMenu`'s
+accessors reference them, so they can't drift. Values sync as **shorts**, hence the `Short.MAX_VALUE`
+caps on the fuel fields.
+
+| Index | Const | Value | Source |
+|-------|-------|-------|--------|
+| 0 | `DATA_SMELT_PROGRESS` | `smeltProgress` | `state.smeltProgress` |
+| 1 | `DATA_SMELT_TOTAL` | `smeltTotal` | `state.smeltTotal` |
+| 2 | `DATA_FUEL_LEFT` | `fuelBurnTimeLeft` (capped) | `state.fuelBurnTimeLeft` |
+| 3 | `DATA_FUEL_MAX` | `maxFuelBurnTime` (capped) | `state.maxFuelBurnTime` |
+| 4 | `DATA_LAVA_PERCENT` | lava % (0–100) | `lava.percent` |
+| 5 | `DATA_LAVA_MB` | lava in mB (0–4000) | `lava.mb` |
+
+Indices 4 & 5 are server-derived (read-only on the client).
 
 ---
 
@@ -177,8 +237,28 @@ val ALL_SLOT_POSITIONS: List<Pair<Int, Int>>     // (x, y) for every slot
 - **No vanilla texture borrowing**: All static GUI elements owned by this mod's `foundry.png`.
 - **F3+T only reloads textures**: Kotlin code changes require full `./gradlew runClient` rebuild.
 - **`addSlot` offset convention**: Menu constants = outer 18×18 corner; slots registered at `+1` for inner 16×16.
-- **Lava boost**: 4× speed when lava present (drains `BUCKET/1600` per tick); 2× without lava.
-- **Byproduct (slag)**: `byproductChance` field — floor = guaranteed count, fraction = roll for +1 extra.
+- **Smelting speed = fuel tier × lava**: coal/charcoal 1.5×, blaze rod 3×; lava in the tank doubles
+  the active fuel speed (and drains `BUCKET/1600` per boosted tick). Tracked at `PROGRESS_RESOLUTION = 2`
+  so the 1.5× stays integer. Fuel type also still affects burn *duration* (vanilla `fuelValues()`; slag = 800).
+- **Byproduct (slag)**: `byproductChance` field — floor = guaranteed count, fraction = roll for +1 extra
+  (supports `>1` for bulk recipes like raw-ore-blocks).
+- **Extends `AbstractFurnaceBlock`**: gives FACING + LIT blockstate, GUI open via `openContainer`, and
+  the recipe-book plumbing for free. `FoundryBlockEntity.serverTick` keeps `LIT` in sync with `isBurning`.
+  `ModBlocks` still sets `.lightLevel { if (LIT) 13 else 0 }` (NOT automatic). `animateTick` adds the
+  blast-furnace crackle, top smoke, and flame/smoke particles on the front face (offset by `FACING`).
+  `blockstates/foundry.json` maps all 4 facings × `lit=false/true`; `lit=true` uses the `foundry_lit`
+  model (overrides only the front-face texture), rotated by `y` per facing.
+- **Stored lava survives item form**: `LavaStorageComponent` (typed `DataComponentType`, registered in
+  `ModDataComponents`) carries mB. `FoundryItem.place` restores it via `lava.fillFromMb(...)`;
+  creative break drops the item with the component (`playerWillDestroy`). Tooltip rendered client-side via
+  `ItemTooltipCallback` in `FoundryClient` (NOT the deprecated `appendHoverText`).
+- **Cross-side recipe access**: always `level.recipeAccess().synchronizedRecipes` (`getFirstMatch` /
+  `getAllOfType`). `getRecipeFor`/`getAllRecipesFor` do NOT exist on the client `RecipeAccess` —
+  do not use them. `isSmeltable(level, stack)` in the companion is the single source of truth
+  (FoundryMenu delegates to it).
 - **`blockState` constructor param**: Named `blockState` (not `state`) to avoid shadowing the `val state: FoundryState` property.
 - **`level.server` on `ServerLevel`**: Non-null at runtime despite Java `@Nullable` on base `Level.getServer()`. Plain `.` call is correct; Sonar false-positive suppressed with `// NOSONAR` if needed.
-- **JEI recipe source**: Reads directly from `RecipeManager.getAllRecipesFor(ModRecipes.FOUNDRY_RECIPE_TYPE)` — single source of truth is JSON, no hardcoded mirror list.
+- **JEI** (`FoundryJeiPlugin` / `FoundryRecipeCategory`): recipes read from
+  `recipeAccess().synchronizedRecipes.getAllOfType(FOUNDRY_RECIPE_TYPE)` — single source of truth is JSON.
+  Slag is added as an **output slot** so left-clicking it in JEI lists every byproduct recipe; the slot
+  shows the guaranteed count with a `+x% chance for one more` tooltip. Category icon is the Foundry block.

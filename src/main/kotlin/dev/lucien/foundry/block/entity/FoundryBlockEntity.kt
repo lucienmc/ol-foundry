@@ -131,7 +131,7 @@ class FoundryBlockEntity(pos: BlockPos, blockState: BlockState) :
         val isHot = state.fuelBurnTimeLeft > 0
         if (!isHot) {
             if (state.smeltProgress > 0) {
-                state.smeltProgress = (state.smeltProgress - 2).coerceAtLeast(0)
+                state.smeltProgress = (state.smeltProgress - PROGRESS_DECAY).coerceAtLeast(0)
                 return true
             }
             return false
@@ -141,9 +141,10 @@ class FoundryBlockEntity(pos: BlockPos, blockState: BlockState) :
         val smelting = recipe ?: return true
         if (!canSmelt) return true
 
-        if (state.smeltProgress == 0) state.smeltTotal = smelting.cookingTime
+        if (state.smeltProgress == 0) state.smeltTotal = smelting.cookingTime * PROGRESS_RESOLUTION
         val hasLavaBoost = lava.hasLava
-        state.smeltProgress += if (hasLavaBoost) 4 else 2
+        val speed = state.fuelSpeed.coerceAtLeast(BASE_FUEL_SPEED)
+        state.smeltProgress += if (hasLavaBoost) speed * LAVA_SPEED_MULTIPLIER else speed
         if (hasLavaBoost) lava.drainForBoost()
 
         if (state.smeltProgress >= state.smeltTotal) {
@@ -161,6 +162,7 @@ class FoundryBlockEntity(pos: BlockPos, blockState: BlockState) :
 
         state.maxFuelBurnTime = burnTime
         state.fuelBurnTimeLeft = burnTime
+        state.fuelSpeed = fuelSpeedFor(fuel)
 
         val remainder = fuel.item.craftingRemainder?.create() ?: ItemStack.EMPTY
         fuel.shrink(1)
@@ -277,6 +279,21 @@ class FoundryBlockEntity(pos: BlockPos, blockState: BlockState) :
         const val BYPRODUCT_SLOT = 5
         const val LAVA_BUCKET_SLOT = 6
         const val INVENTORY_SIZE = 7
+
+        /**
+         * Progress is tracked at [PROGRESS_RESOLUTION]× the recipe cook time so fractional speed
+         * multipliers stay whole numbers. Per-tick progress by fuel (before the lava multiplier):
+         * coal/charcoal → 1.5×, blaze rod → 3×. Lava in the tank doubles whichever is active.
+         */
+        const val PROGRESS_RESOLUTION = 2
+        const val PROGRESS_DECAY = 2
+        const val BASE_FUEL_SPEED = 3    // 1.5× × PROGRESS_RESOLUTION
+        const val BLAZE_FUEL_SPEED = 6   // 3×   × PROGRESS_RESOLUTION
+        const val LAVA_SPEED_MULTIPLIER = 2
+
+        /** Per-tick smelting speed granted by [stack] as fuel, before the lava multiplier. */
+        fun fuelSpeedFor(stack: ItemStack): Int =
+            if (stack.`is`(Items.BLAZE_ROD)) BLAZE_FUEL_SPEED else BASE_FUEL_SPEED
 
         /** The three result slots, filled left-to-right. */
         val RESULT_SLOTS = intArrayOf(OUTPUT_SLOT, OUTPUT_SLOT_2, OUTPUT_SLOT_3)

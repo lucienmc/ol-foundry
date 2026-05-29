@@ -11,6 +11,9 @@ class FoundryState {
     var smeltTotal: Int = DEFAULT_COOK_TIME
     var storedXp: Float = 0f
 
+    /** Smelting progress added per tick by the fuel currently burning (before the lava multiplier). */
+    var fuelSpeed: Int = 0
+
     val isBurning: Boolean get() = fuelBurnTimeLeft > 0
 
     fun save(output: ValueOutput) {
@@ -18,6 +21,7 @@ class FoundryState {
         output.putInt("max_fuel_burn_time", maxFuelBurnTime)
         output.putInt("smelt_progress", smeltProgress)
         output.putInt("smelt_total", smeltTotal)
+        output.putInt("fuel_speed", fuelSpeed)
         output.putFloat("stored_xp", storedXp)
     }
 
@@ -26,6 +30,7 @@ class FoundryState {
         maxFuelBurnTime = input.getIntOr("max_fuel_burn_time", 0)
         smeltProgress = input.getIntOr("smelt_progress", 0)
         smeltTotal = input.getIntOr("smelt_total", DEFAULT_COOK_TIME)
+        fuelSpeed = input.getIntOr("fuel_speed", 0)
         storedXp = input.getFloatOr("stored_xp", 0f)
     }
 

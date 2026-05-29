@@ -49,14 +49,24 @@ class FoundryRecipeCategory(guiHelper: IGuiHelper) : IRecipeCategory<FoundryReci
             }
 
         var nextOutputY = SLOT_Y + 26
-        if (display.byproductChance > 0f) {
+        if (display.hasByproduct) {
             builder.addOutputSlot(OUTPUT_X, nextOutputY)
-                .add(display.byproduct)
+                .add(display.byproductStack)
                 .addRichTooltipCallback { _, tooltip ->
                     tooltip.add(
-                        Component.literal("${display.byproductChancePercent} chance to drop")
-                            .withStyle(ChatFormatting.GRAY)
+                        Component.literal("Slag byproduct").withStyle(ChatFormatting.GRAY)
                     )
+                    if (display.byproductGuaranteed >= 1 && display.byproductExtraChance > 0f) {
+                        tooltip.add(
+                            Component.literal("+${display.byproductExtraPercent} chance for one more")
+                                .withStyle(ChatFormatting.DARK_GRAY)
+                        )
+                    } else if (display.byproductGuaranteed < 1) {
+                        tooltip.add(
+                            Component.literal("${display.byproductExtraPercent} chance to drop")
+                                .withStyle(ChatFormatting.DARK_GRAY)
+                        )
+                    }
                 }
             nextOutputY += 26
         }
@@ -80,13 +90,25 @@ class FoundryRecipeCategory(guiHelper: IGuiHelper) : IRecipeCategory<FoundryReci
 
         builder.addInputSlot(FUEL_X, FUEL_Y)
             .addItemStacks(listOf(ItemStack(Items.COAL), ItemStack(Items.CHARCOAL)))
+            .addRichTooltipCallback { _, tooltip ->
+                tooltip.add(
+                    Component.literal("1.5× smelting speed").withStyle(ChatFormatting.GRAY)
+                )
+            }
 
         builder.addInputSlot(FUEL_X + 25, FUEL_Y)
+            .add(Items.BLAZE_ROD)
+            .addRichTooltipCallback { _, tooltip ->
+                tooltip.add(
+                    Component.literal("3× smelting speed").withStyle(ChatFormatting.GOLD)
+                )
+            }
+
+        builder.addInputSlot(FUEL_X + 50, FUEL_Y)
             .add(Items.LAVA_BUCKET)
             .addRichTooltipCallback { _, tooltip ->
                 tooltip.add(
-                    Component.literal("Fills the lava tank for 4× speed")
-                        .withStyle(ChatFormatting.GRAY)
+                    Component.literal("Doubles smelting speed").withStyle(ChatFormatting.GRAY)
                 )
             }
     }
