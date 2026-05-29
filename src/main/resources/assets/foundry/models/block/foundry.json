@@ -1,28 +1,80 @@
 {
-  "format_version": "1.21.11",
-  "credit": "Made with Blockbench",
-  "parent": "minecraft:block/cube",
-  "textures": {
-    "east": "foundry:block/foundry_left",
-    "north": "foundry:block/foundry_front",
-    "particle": "foundry:block/foundry_back",
-    "south": "foundry:block/foundry_back",
-    "up": "foundry:block/foundry_top",
-    "west": "foundry:block/foundry_right",
-    "down": "minecraft:block/smooth_stone"
-  },
-  "elements": [
-    {
-      "from": [0, 0, 0],
-      "to": [16, 16, 16],
-      "faces": {
-        "north": { "uv": [0, 0, 16, 16], "texture": "#north" },
-        "east": { "uv": [0, 0, 16, 16], "texture": "#west" },
-        "south": { "uv": [0, 0, 16, 16], "texture": "#south" },
-        "west": { "uv": [0, 0, 16, 16], "texture": "#east" },
-        "up": { "uv": [0, 0, 16, 16], "texture": "#up" },
-        "down": { "uv": [0, 0, 16, 16], "texture": "#down" }
-      }
-    }
-  ]
+	"format_version": "1.21.11",
+	"credit": "Made with Blockbench",
+	"parent": "minecraft:block/cube",
+	"textures": {
+		"east": "foundry:block/foundry_left",
+		"north": "foundry:block/foundry_front",
+		"particle": "foundry:block/foundry_back",
+		"south": "foundry:block/foundry_back",
+		"up": "foundry:block/foundry_top",
+		"west": "foundry:block/foundry_right",
+		"down": "block/smooth_stone"
+	},
+	"elements": [
+		{
+			"from": [0, 0, 0],
+			"to": [16, 16, 16],
+			"faces": {
+				"north": {"uv": [0, 0, 16, 16], "texture": "#north"},
+				"east": {"uv": [0, 0, 16, 16], "texture": "#west"},
+				"south": {"uv": [0, 0, 16, 16], "texture": "#south"},
+				"west": {"uv": [0, 0, 16, 16], "texture": "#east"},
+				"up": {"uv": [0, 0, 16, 16], "texture": "#up"},
+				"down": {"uv": [0, 0, 16, 16], "texture": "#down"}
+			}
+		},
+		{
+			"from": [5, 16, 5],
+			"to": [11, 17, 6],
+			"rotation": {"angle": 0, "axis": "y", "origin": [5, 16, 5]},
+			"faces": {
+				"north": {"uv": [0, 4, 6, 5], "texture": "#up"},
+				"east": {"uv": [1, 4, 2, 5], "texture": "#up"},
+				"south": {"uv": [0, 4, 6, 5], "texture": "#up"},
+				"west": {"uv": [0, 4, 1, 5], "texture": "#up"},
+				"up": {"uv": [0, 0, 6, 1], "texture": "#up"},
+				"down": {"uv": [0, 1, 6, 2], "texture": "#up"}
+			}
+		},
+		{
+			"from": [5, 16, 10],
+			"to": [11, 17, 11],
+			"rotation": {"angle": 0, "axis": "y", "origin": [5, 16, 10]},
+			"faces": {
+				"north": {"uv": [0, 4, 6, 5], "texture": "#up"},
+				"east": {"uv": [1, 4, 2, 5], "texture": "#up"},
+				"south": {"uv": [0, 4, 6, 5], "texture": "#up"},
+				"west": {"uv": [0, 4, 1, 5], "texture": "#up"},
+				"up": {"uv": [0, 0, 6, 1], "texture": "#up"},
+				"down": {"uv": [0, 1, 6, 2], "texture": "#up"}
+			}
+		},
+		{
+			"from": [10, 16, 6],
+			"to": [11, 17, 10],
+			"rotation": {"angle": 0, "axis": "y", "origin": [10, 16, 8]},
+			"faces": {
+				"north": {"uv": [5, 4, 6, 5], "texture": "#up"},
+				"east": {"uv": [0, 4, 4, 5], "texture": "#up"},
+				"south": {"uv": [0, 4, 1, 5], "texture": "#up"},
+				"west": {"uv": [0, 4, 4, 5], "texture": "#up"},
+				"up": {"uv": [0, 0, 1, 4], "texture": "#up"},
+				"down": {"uv": [0, 0, 1, 4], "texture": "#up"}
+			}
+		},
+		{
+			"from": [5, 16, 6],
+			"to": [6, 17, 10],
+			"rotation": {"angle": 0, "axis": "y", "origin": [5, 16, 8]},
+			"faces": {
+				"north": {"uv": [5, 4, 6, 5], "texture": "#up"},
+				"east": {"uv": [0, 4, 4, 5], "texture": "#up"},
+				"south": {"uv": [0, 4, 1, 5], "texture": "#up"},
+				"west": {"uv": [0, 4, 4, 5], "texture": "#up"},
+				"up": {"uv": [0, 0, 1, 4], "texture": "#up"},
+				"down": {"uv": [0, 0, 1, 4], "texture": "#up"}
+			}
+		}
+	]
 }
