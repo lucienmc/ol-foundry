@@ -1,5 +1,6 @@
 package dev.lucien.foundry
 
+import dev.lucien.foundry.config.FoundryConfigManager
 import dev.lucien.foundry.registry.*
 import net.fabricmc.api.ModInitializer
 import org.slf4j.Logger
@@ -12,6 +13,7 @@ class Foundry : ModInitializer {
     }
 
     override fun onInitialize() {
+        FoundryConfigManager.load()
         ModDataComponents.init()
         ModBlocks.init()
         ModItems.init()

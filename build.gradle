@@ -12,6 +12,14 @@ repositories {
     maven {
         url = "https://maven.blamejared.com"
     }
+    // Mod Menu
+    maven {
+        url = "https://maven.terraformersmc.com/releases"
+    }
+    // YetAnotherConfigLib (YACL)
+    maven {
+        url = "https://maven.isxander.dev/releases"
+    }
 }
 
 loom {
@@ -55,6 +63,14 @@ dependencies {
     // JEI
     compileOnly "mezz.jei:jei-${project.minecraft_version}-fabric-api:${jei_version}"
     runtimeOnly "mezz.jei:jei-${project.minecraft_version}-fabric:${jei_version}"
+
+    // Optional config UI: ModMenu launches a YACL screen. Both are client-only and never required
+    // at runtime — the config still loads and is honoured without them. localRuntime keeps them in
+    // the dev environment for testing without publishing them as dependencies.
+    compileOnly "com.terraformersmc:modmenu:${modmenu_version}"
+    compileOnly "dev.isxander:yet-another-config-lib:${yacl_version}"
+    localRuntime "com.terraformersmc:modmenu:${modmenu_version}"
+    localRuntime "dev.isxander:yet-another-config-lib:${yacl_version}"
 }
 
 processResources {
