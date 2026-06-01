@@ -1,5 +1,6 @@
 package dev.lucien.foundry.block.entity
 
+import dev.lucien.foundry.config.FoundryConfigManager
 import dev.lucien.foundry.menu.FoundryMenu
 import dev.lucien.foundry.recipe.FoundryRecipe
 import dev.lucien.foundry.recipe.FoundryRecipeInput
@@ -36,6 +37,7 @@ import net.minecraft.world.level.block.state.BlockState
 import net.minecraft.world.level.storage.ValueInput
 import net.minecraft.world.level.storage.ValueOutput
 import net.minecraft.world.phys.Vec3
+import kotlin.math.roundToInt
 
 class FoundryBlockEntity(pos: BlockPos, blockState: BlockState) :
     BlockEntity(ModBlockEntities.FOUNDRY, pos, blockState), ImplementedContainer, WorldlyContainer,
@@ -144,8 +146,9 @@ class FoundryBlockEntity(pos: BlockPos, blockState: BlockState) :
 
         if (state.smeltProgress == 0) state.smeltTotal = smelting.cookingTime * PROGRESS_RESOLUTION
         val hasLavaBoost = lava.hasLava
-        val speed = state.fuelSpeed.coerceAtLeast(BASE_FUEL_SPEED)
-        state.smeltProgress += if (hasLavaBoost) speed * LAVA_SPEED_MULTIPLIER else speed
+        val speed = state.fuelSpeed.coerceAtLeast(1)
+        state.smeltProgress +=
+            if (hasLavaBoost) (speed * FoundryConfigManager.config.lavaSpeedMultiplier).roundToInt() else speed
         if (hasLavaBoost) lava.drainForBoost()
 
         if (state.smeltProgress >= state.smeltTotal) {
@@ -175,8 +178,9 @@ class FoundryBlockEntity(pos: BlockPos, blockState: BlockState) :
     private fun getFuelBurnTime(level: ServerLevel, stack: ItemStack): Int {
         val vanillaTime = level.server.fuelValues().burnDuration(stack)
         if (vanillaTime > 0) return vanillaTime
-        if (stack.`is`(ModItems.SLAG)) return 800
-        if (stack.`is`(Items.MAGMA_CREAM)) return MAGMA_CREAM_BURN_TIME
+        val config = FoundryConfigManager.config
+        if (stack.`is`(ModItems.SLAG)) return config.slagBurnTime
+        if (stack.`is`(Items.MAGMA_CREAM)) return config.magmaCreamBurnTime
 
         return 0
     }
@@ -286,27 +290,26 @@ class FoundryBlockEntity(pos: BlockPos, blockState: BlockState) :
 
         /**
          * Progress is tracked at [PROGRESS_RESOLUTION]× the recipe cook time so fractional speed
-         * multipliers stay whole numbers. Per-tick progress by fuel (before the lava multiplier):
-         * any fuel → 1×, coal/charcoal → 1.5×, magma cream → 2×, blaze rod → 3×.
-         * Lava in the tank doubles whichever is active.
+         * multipliers (e.g. the default 1.5× for coal) stay whole numbers. The per-fuel and lava
+         * multipliers themselves live in [FoundryConfig][dev.lucien.foundry.config.FoundryConfig].
          */
         const val PROGRESS_RESOLUTION = 2
         const val PROGRESS_DECAY = 2
-        const val BASE_FUEL_SPEED = 2    // 1×   × PROGRESS_RESOLUTION (any fuel)
-        const val COAL_FUEL_SPEED = 3    // 1.5× × PROGRESS_RESOLUTION
-        const val MAGMA_FUEL_SPEED = 4   // 2×   × PROGRESS_RESOLUTION
-        const val BLAZE_FUEL_SPEED = 6   // 3×   × PROGRESS_RESOLUTION
-        const val LAVA_SPEED_MULTIPLIER = 2
 
-        /** Burn time (ticks) for magma cream, which is not a vanilla furnace fuel. */
-        const val MAGMA_CREAM_BURN_TIME = 1000
+        /** Converts a config speed multiplier into per-tick progress units. */
+        private fun speedUnits(multiplier: Double): Int =
+            (multiplier * PROGRESS_RESOLUTION).roundToInt().coerceAtLeast(1)
 
         /** Per-tick smelting speed granted by [stack] as fuel, before the lava multiplier. */
-        fun fuelSpeedFor(stack: ItemStack): Int = when {
-            stack.`is`(Items.BLAZE_ROD) -> BLAZE_FUEL_SPEED
-            stack.`is`(Items.MAGMA_CREAM) -> MAGMA_FUEL_SPEED
-            stack.`is`(ItemTags.COALS) -> COAL_FUEL_SPEED
-            else -> BASE_FUEL_SPEED
+        fun fuelSpeedFor(stack: ItemStack): Int {
+            val config = FoundryConfigManager.config
+            val multiplier = when {
+                stack.`is`(Items.BLAZE_ROD) -> config.blazeRodFuelSpeedMultiplier
+                stack.`is`(Items.MAGMA_CREAM) -> config.magmaCreamFuelSpeedMultiplier
+                stack.`is`(ItemTags.COALS) -> config.coalFuelSpeedMultiplier
+                else -> config.baseFuelSpeedMultiplier
+            }
+            return speedUnits(multiplier)
         }
 
         /** The three result slots, filled left-to-right. */

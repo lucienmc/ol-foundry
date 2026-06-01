@@ -199,6 +199,7 @@ key_key.jei.previousCategory:key.keyboard.page.up
 key_key.jei.nextCategory:key.keyboard.page.down
 key_key.jei.closeRecipeGui:key.keyboard.escape
 key_key.jei.copy.recipe.id:key.keyboard.unknown
+key_key.modmenu.open_menu:key.keyboard.unknown
 soundCategory_master:1.0
 soundCategory_music:0.0
 soundCategory_record:1.0

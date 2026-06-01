@@ -25,6 +25,9 @@
     ],
     "jei_mod_plugin": [
       "dev.lucien.foundry.jei.FoundryJeiPlugin"
+    ],
+    "modmenu": [
+      "dev.lucien.foundry.config.client.FoundryModMenu"
     ]
   },
   "mixins": [
@@ -39,5 +42,9 @@
     "minecraft": "~26.1.2",
     "java": ">=25",
     "fabric-api": "*"
+  },
+  "suggests": {
+    "modmenu": "*",
+    "yet_another_config_lib_v3": "*"
   }
 }

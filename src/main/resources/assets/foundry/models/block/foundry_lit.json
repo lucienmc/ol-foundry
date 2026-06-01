@@ -1,6 +1,8 @@
 {
-  "parent": "foundry:block/foundry",
-  "textures": {
-    "north": "foundry:block/foundry_front_lit"
-  }
+	"format_version": "1.21.11",
+	"credit": "Made with Blockbench",
+	"parent": "foundry:block/foundry",
+	"textures": {
+		"north": "foundry:block/foundry_front_lit"
+	}
 }
