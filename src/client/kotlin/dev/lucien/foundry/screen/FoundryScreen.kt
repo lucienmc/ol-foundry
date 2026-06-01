@@ -128,7 +128,7 @@ class FoundryScreen(
             graphics.setTooltipForNextFrame(
                 Component.literal("${menu.getLavaMb()}")
                     .append(
-                        Component.literal(" / ${FoundryLavaTank.CAPACITY_MB} mB")
+                        Component.literal(" / ${FoundryLavaTank.capacityMb} mB")
                             .withStyle(ChatFormatting.GRAY)
                     ),
                 mouseX,

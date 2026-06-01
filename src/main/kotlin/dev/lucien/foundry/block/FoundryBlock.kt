@@ -61,7 +61,7 @@ class FoundryBlock(properties: Properties) : AbstractFurnaceBlock(properties) {
         if (level.isClientSide) return InteractionResult.SUCCESS
         val entity =
             level.getBlockEntity(pos) as? FoundryBlockEntity ?: return InteractionResult.PASS
-        if (FoundryLavaTank.CAPACITY - entity.lava.storage.amount < FluidConstants.BUCKET) return InteractionResult.SUCCESS
+        if (FoundryLavaTank.capacityDroplets - entity.lava.storage.amount < FluidConstants.BUCKET) return InteractionResult.SUCCESS
         Transaction.openOuter().use { tx ->
             entity.lava.storage.insert(FluidVariant.of(Fluids.LAVA), FluidConstants.BUCKET, tx)
             tx.commit()

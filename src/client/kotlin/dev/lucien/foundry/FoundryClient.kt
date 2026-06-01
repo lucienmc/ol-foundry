@@ -21,7 +21,7 @@ class FoundryClient : ClientModInitializer {
                     Component.literal("Lava: ")
                         .append(Component.literal("$mb").withStyle(ChatFormatting.GOLD))
                         .append(
-                            Component.literal(" / ${FoundryLavaTank.CAPACITY_MB} mB")
+                            Component.literal(" / ${FoundryLavaTank.capacityMb} mB")
                                 .withStyle(ChatFormatting.GRAY)
                         )
                 )
