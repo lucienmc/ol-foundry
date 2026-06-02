@@ -2,13 +2,9 @@ package dev.lucien.foundry.block
 
 import com.mojang.serialization.MapCodec
 import dev.lucien.foundry.block.entity.FoundryBlockEntity
-import dev.lucien.foundry.block.entity.FoundryLavaTank
 import dev.lucien.foundry.item.LavaStorageComponent
 import dev.lucien.foundry.registry.ModBlockEntities
 import dev.lucien.foundry.registry.ModDataComponents
-import net.fabricmc.fabric.api.transfer.v1.fluid.FluidConstants
-import net.fabricmc.fabric.api.transfer.v1.fluid.FluidVariant
-import net.fabricmc.fabric.api.transfer.v1.transaction.Transaction
 import net.minecraft.core.BlockPos
 import net.minecraft.core.particles.ParticleTypes
 import net.minecraft.server.level.ServerLevel
@@ -29,7 +25,6 @@ import net.minecraft.world.level.block.entity.BlockEntity
 import net.minecraft.world.level.block.entity.BlockEntityTicker
 import net.minecraft.world.level.block.entity.BlockEntityType
 import net.minecraft.world.level.block.state.BlockState
-import net.minecraft.world.level.material.Fluids
 import net.minecraft.world.phys.BlockHitResult
 
 class FoundryBlock(properties: Properties) : AbstractFurnaceBlock(properties) {
@@ -61,11 +56,7 @@ class FoundryBlock(properties: Properties) : AbstractFurnaceBlock(properties) {
         if (level.isClientSide) return InteractionResult.SUCCESS
         val entity =
             level.getBlockEntity(pos) as? FoundryBlockEntity ?: return InteractionResult.PASS
-        if (FoundryLavaTank.capacityDroplets - entity.lava.storage.amount < FluidConstants.BUCKET) return InteractionResult.SUCCESS
-        Transaction.openOuter().use { tx ->
-            entity.lava.storage.insert(FluidVariant.of(Fluids.LAVA), FluidConstants.BUCKET, tx)
-            tx.commit()
-        }
+        if (!entity.lava.tryAddBucket()) return InteractionResult.SUCCESS
         if (!player.isCreative) {
             stack.shrink(1)
             player.addItem(ItemStack(Items.BUCKET))
