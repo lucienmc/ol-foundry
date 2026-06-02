@@ -108,7 +108,7 @@ class FoundryBlockEntity(pos: BlockPos, blockState: BlockState) :
         processBucketSlot()
 
         val inputStack = items[INPUT_SLOT]
-        val recipeInput = FoundryRecipeInput(inputStack, lava.hasLava)
+        val recipeInput = FoundryRecipeInput(inputStack)
 
         val recipeHolder =
             level.recipeAccess().synchronizedRecipes
@@ -331,7 +331,7 @@ class FoundryBlockEntity(pos: BlockPos, blockState: BlockState) :
         const val DATA_COUNT = 6
 
         fun isSmeltable(level: Level, stack: ItemStack): Boolean {
-            val input = FoundryRecipeInput(stack, false)
+            val input = FoundryRecipeInput(stack)
             return level.recipeAccess()
                 .synchronizedRecipes
                 .getFirstMatch(ModRecipes.FOUNDRY_RECIPE_TYPE, input, level)

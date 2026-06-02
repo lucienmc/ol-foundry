@@ -38,13 +38,20 @@ class FoundryLavaTank(private val onChanged: () -> Unit) {
         onChanged()
     }
 
-    fun tryConsumeBucket(bucketSlot: ItemStack): ItemStack? {
-        if (bucketSlot.isEmpty || !bucketSlot.`is`(Items.LAVA_BUCKET)) return null
-        if (capacityDroplets - storage.amount < FluidConstants.BUCKET) return null
+    /** Inserts one bucket of lava if the tank has room; returns whether it fit. */
+    fun tryAddBucket(): Boolean {
+        if (capacityDroplets - storage.amount < FluidConstants.BUCKET) return false
         Transaction.openOuter().use { tx ->
             storage.insert(FluidVariant.of(Fluids.LAVA), FluidConstants.BUCKET, tx)
             tx.commit()
         }
+        return true
+    }
+
+    /** Consumes a lava bucket from the input slot into the tank, returning the empty bucket (or null). */
+    fun tryConsumeBucket(bucketSlot: ItemStack): ItemStack? {
+        if (bucketSlot.isEmpty || !bucketSlot.`is`(Items.LAVA_BUCKET)) return null
+        if (!tryAddBucket()) return null
         return ItemStack(Items.BUCKET)
     }
 
