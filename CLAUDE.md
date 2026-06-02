@@ -71,7 +71,8 @@ val percent: Int   // 0–100, for ContainerData DATA_LAVA_PERCENT
 val mb: Int        // current mB, for ContainerData DATA_LAVA_MB
 
 fun fillFromMb(mb: Int)                                    // set tank from a stored-item amount (clamped)
-fun tryConsumeBucket(bucketSlot: ItemStack): ItemStack?   // returns empty bucket or null
+fun tryAddBucket(): Boolean                                // insert one bucket if there's room (shared by block-use + slot)
+fun tryConsumeBucket(bucketSlot: ItemStack): ItemStack?   // returns empty bucket or null (delegates to tryAddBucket)
 fun drainForBoost()                                        // call once per boosted tick
 fun save(output: ValueOutput)
 fun load(input: ValueInput)
