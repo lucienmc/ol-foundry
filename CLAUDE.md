@@ -30,6 +30,11 @@ Before finishing any code change, run through this checklist:
    (`// shrink the stack` over `stack.shrink(1)`). Comments earn their place by explaining *why* —
    a non-obvious decision, a pitfall, or a cross-version gotcha. Delete stale or redundant ones as
    you touch surrounding code.
+4. **PR descriptions are release notes.** Every PR description must include a clear, **bullet-point
+   changelog written for players** — the PR body is published verbatim as the version's description
+   on Modrinth. Lead with a one-line summary, then bullets grouped as needed (Added / Changed /
+   Fixed). Keep it user-facing: no file names, class names, or internal jargon. Mirror the
+   `CHANGELOG.md` entry for this change.
 
 ---
 
