@@ -35,6 +35,10 @@ Before finishing any code change, run through this checklist:
    on Modrinth. Lead with a one-line summary, then bullets grouped as needed (Added / Changed /
    Fixed). Keep it user-facing: no file names, class names, or internal jargon. Mirror the
    `CHANGELOG.md` entry for this change.
+5. **Bump `mod_version` in `gradle.properties`** on any PR that ships a user-facing change (patch for
+   fixes/small features). Merging the PR into `main` auto-tags `v<mod_version>` and publishes it to
+   Modrinth (see `.github/workflows/release.yml`), so the version must be new — a duplicate tag is
+   skipped with a warning. Move the `CHANGELOG.md` `[Unreleased]`/top entry to that version number.
 
 ---
 
