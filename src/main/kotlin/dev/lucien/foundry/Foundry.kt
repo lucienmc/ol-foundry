@@ -20,6 +20,7 @@ class Foundry : ModInitializer {
         ModBlockEntities.init()
         ModRecipes.init()
         ModMenuTypes.init()
+        ModEvents.init()
         LOGGER.info("Foundry mod initialized.")
     }
 }

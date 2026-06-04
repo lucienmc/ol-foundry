@@ -15,6 +15,29 @@ Custom block: **Foundry** — a blast-furnace-like smelter (extends `AbstractFur
 
 ---
 
+## Conventions (apply to every change)
+
+Before finishing any code change, run through this checklist:
+
+1. **Update `CHANGELOG.md`.** Add an entry under the current unreleased version for any user-facing
+   change (new behavior, recipe, item, interaction, balance tweak, bugfix). Use the existing
+   [Keep a Changelog](https://keepachangelog.com/) sections (`Added` / `Changed` / `Fixed` /
+   `Removed`). Skip only for pure internal refactors with no observable effect.
+2. **Keep `CLAUDE.md` in sync.** When the architecture, public APIs, slot/data constants, config
+   fields, or design decisions change, update the relevant section here in the same change so this
+   document never drifts from the code.
+3. **No useless comments.** Don't add comments that merely restate well-named code
+   (`// shrink the stack` over `stack.shrink(1)`). Comments earn their place by explaining *why* —
+   a non-obvious decision, a pitfall, or a cross-version gotcha. Delete stale or redundant ones as
+   you touch surrounding code.
+4. **PR descriptions are release notes.** Every PR description must include a clear, **bullet-point
+   changelog written for players** — the PR body is published verbatim as the version's description
+   on Modrinth. Lead with a one-line summary, then bullets grouped as needed (Added / Changed /
+   Fixed). Keep it user-facing: no file names, class names, or internal jargon. Mirror the
+   `CHANGELOG.md` entry for this change.
+
+---
+
 ## Key Files
 
 | File | Purpose |
