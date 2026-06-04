@@ -1,34 +1,25 @@
 name: Release
 
-# Merging a PR into `main` auto-releases the mod:
-#   1. Reads `mod_version` from gradle.properties.
-#   2. Creates a GitHub release tagged `v<mod_version>` and publishes the jar to Modrinth.
-#   3. Uses the merged PR's description as the release / Modrinth changelog.
+# Pushing to `main` (i.e. merging a PR) releases the mod — but only when `mod_version` is new:
+#   1. Read `mod_version` from gradle.properties.
+#   2. If a `v<mod_version>` release already exists, do nothing (non-version-bump merges are no-ops).
+#   3. Otherwise build, create the `v<mod_version>` GitHub release, and publish to Modrinth, using the
+#      matching `## [<mod_version>]` section of CHANGELOG.md as the changelog.
 #
-# So: bump `mod_version` and write a clear, player-facing PR body on every release PR.
-#
-# Why this is one job (create release + publish together) rather than "create release" → "publish on
-# release": a release created with the default GITHUB_TOKEN does NOT trigger other workflows
-# (GitHub's anti-recursion rule), so a separate publish-on-release workflow would never fire.
-# mc-publish creates the release itself via `github-tag`, so no second workflow and no PAT are needed.
+# So the changelog lives in CHANGELOG.md (one source of truth, player-facing) — never the PR body.
+# To release: bump `mod_version` and add its CHANGELOG.md section in the PR, then merge.
+# `workflow_dispatch` is available to re-run a release manually.
 
 on:
-  pull_request:
-    types: [ closed ]
+  push:
     branches: [ main ]
-  workflow_dispatch:        # manual run (first release / re-runs); supply notes below
-    inputs:
-      changelog:
-        description: "Release notes (used only for manual runs)"
-        required: false
-        default: ""
+  workflow_dispatch:
 
 permissions:
   contents: write   # create the release + tag
 
 jobs:
   publish:
-    if: github.event_name == 'workflow_dispatch' || github.event.pull_request.merged == true
     runs-on: ubuntu-latest
     steps:
       - name: Checkout
@@ -46,9 +37,23 @@ jobs:
           tag="v${{ steps.ver.outputs.version }}"
           if gh release view "$tag" --repo "$GITHUB_REPOSITORY" >/dev/null 2>&1; then
             echo "skip=true" >> "$GITHUB_OUTPUT"
-            echo "::warning::Release $tag already exists — did you forget to bump mod_version? Skipping."
+            echo "::notice::$tag already released — nothing to publish."
           else
             echo "skip=false" >> "$GITHUB_OUTPUT"
+          fi
+
+      - name: Extract changelog section
+        if: steps.guard.outputs.skip == 'false'
+        run: |
+          ver="${{ steps.ver.outputs.version }}"
+          awk -v ver="$ver" '
+            index($0, "## [" ver "]") == 1 { flag=1; next }
+            flag && /^## / { exit }
+            flag { print }
+          ' CHANGELOG.md | sed '/./,$!d' > release-notes.md
+          echo "----- release notes -----"; cat release-notes.md
+          if [ ! -s release-notes.md ]; then
+            echo "::warning::No CHANGELOG.md section found for $ver — release notes will be empty."
           fi
 
       - name: Set up JDK 25
@@ -88,7 +93,7 @@ jobs:
           # ── Metadata ────────────────────────────────────────────────
           name: Foundry v${{ steps.ver.outputs.version }}
           version: ${{ steps.ver.outputs.version }}
-          changelog: ${{ github.event.pull_request.body || inputs.changelog }}
+          changelog-file: release-notes.md
           version-type: release
           loaders: fabric
           game-versions: 26.1.2
