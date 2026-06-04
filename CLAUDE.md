@@ -30,15 +30,15 @@ Before finishing any code change, run through this checklist:
    (`// shrink the stack` over `stack.shrink(1)`). Comments earn their place by explaining *why* —
    a non-obvious decision, a pitfall, or a cross-version gotcha. Delete stale or redundant ones as
    you touch surrounding code.
-4. **PR descriptions are release notes.** Every PR description must include a clear, **bullet-point
-   changelog written for players** — the PR body is published verbatim as the version's description
-   on Modrinth. Lead with a one-line summary, then bullets grouped as needed (Added / Changed /
-   Fixed). Keep it user-facing: no file names, class names, or internal jargon. Mirror the
-   `CHANGELOG.md` entry for this change.
+4. **`CHANGELOG.md` is the release notes — not the PR body.** The release workflow publishes the
+   `## [<mod_version>]` section of `CHANGELOG.md` verbatim as the Modrinth changelog, so keep that
+   section clean and player-facing (no file/class names or internal jargon). PR descriptions are for
+   **reviewers** — explain what changed and why, infra detail welcome.
 5. **Bump `mod_version` in `gradle.properties`** on any PR that ships a user-facing change (patch for
-   fixes/small features). Merging the PR into `main` auto-tags `v<mod_version>` and publishes it to
-   Modrinth (see `.github/workflows/release.yml`), so the version must be new — a duplicate tag is
-   skipped with a warning. Move the `CHANGELOG.md` `[Unreleased]`/top entry to that version number.
+   fixes/small features), and give that version its own `CHANGELOG.md` section. Merging into `main`
+   pushes to the release workflow (`.github/workflows/release.yml`), which tags `v<mod_version>`,
+   creates a GitHub release, and publishes to Modrinth **only if that version isn't already released**
+   — so a merge without a version bump is a safe no-op.
 
 ---
 
