@@ -55,6 +55,19 @@ class FoundryLavaTank(private val onChanged: () -> Unit) {
         return ItemStack(Items.BUCKET)
     }
 
+    /** Drains one full bucket of lava out of the tank if it holds at least that much; returns success. */
+    fun tryRemoveBucket(): Boolean {
+        if (storage.amount < FluidConstants.BUCKET) return false
+        Transaction.openOuter().use { tx ->
+            val extracted = storage.extract(FluidVariant.of(Fluids.LAVA), FluidConstants.BUCKET, tx)
+            if (extracted == FluidConstants.BUCKET) {
+                tx.commit()
+                return true
+            }
+        }
+        return false
+    }
+
     fun drainForBoost() {
         Transaction.openOuter().use { tx ->
             storage.extract(FluidVariant.of(Fluids.LAVA), DRAIN_PER_TICK, tx)
