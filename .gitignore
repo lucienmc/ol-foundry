@@ -4,5 +4,5 @@ build/
 
 run/*
 !run/mods/
-.idea/runConfigurations/Minecraft_Server.xml
-.idea/runConfigurations/Data_Generation.xml
+.idea\runConfigurations\Minecraft_Server.xml
+.idea\runConfigurations\Data_Generation.xml
