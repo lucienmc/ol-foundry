@@ -17,6 +17,7 @@ import net.minecraft.world.InteractionHand
 import net.minecraft.world.InteractionResult
 import net.minecraft.world.entity.player.Player
 import net.minecraft.world.item.ItemStack
+import net.minecraft.world.item.ItemUtils
 import net.minecraft.world.item.Items
 import net.minecraft.world.level.Level
 import net.minecraft.world.level.block.AbstractFurnaceBlock
@@ -57,10 +58,8 @@ class FoundryBlock(properties: Properties) : AbstractFurnaceBlock(properties) {
         val entity =
             level.getBlockEntity(pos) as? FoundryBlockEntity ?: return InteractionResult.PASS
         if (!entity.lava.tryAddBucket()) return InteractionResult.SUCCESS
-        if (!player.isCreative) {
-            stack.shrink(1)
-            player.addItem(ItemStack(Items.BUCKET))
-        }
+        // Keep the emptied bucket in the same hand slot for a single bucket (vanilla swap behavior).
+        player.setItemInHand(hand, ItemUtils.createFilledResult(stack, player, ItemStack(Items.BUCKET)))
         return InteractionResult.SUCCESS
     }
 
