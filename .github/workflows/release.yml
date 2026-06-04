@@ -1,61 +1,94 @@
 name: Release
 
-# Publishes to Modrinth + GitHub Releases when you publish a GitHub Release, e.g. `v1.0.1`.
+# Merging a PR into `main` auto-releases the mod:
+#   1. Reads `mod_version` from gradle.properties.
+#   2. Creates a GitHub release tagged `v<mod_version>` and publishes the jar to Modrinth.
+#   3. Uses the merged PR's description as the release / Modrinth changelog.
 #
-# Release flow:
-#   1. Bump `mod_version` in gradle.properties (must match the tag, without the leading `v`).
-#   2. Commit to main.
-#   3. Create a GitHub Release (UI or `gh release create v1.0.1 ...`) — its tag creates the
-#      version and its description becomes the Modrinth changelog (see `changelog` below).
+# So: bump `mod_version` and write a clear, player-facing PR body on every release PR.
 #
-# Triggering on `release: published` (rather than a raw tag push) means the release — and the
-# description we want as the changelog — already exists when this job runs.
+# Why this is one job (create release + publish together) rather than "create release" → "publish on
+# release": a release created with the default GITHUB_TOKEN does NOT trigger other workflows
+# (GitHub's anti-recursion rule), so a separate publish-on-release workflow would never fire.
+# mc-publish creates the release itself via `github-tag`, so no second workflow and no PAT are needed.
 
 on:
-  release:
-    types: [ published ]
+  pull_request:
+    types: [ closed ]
+    branches: [ main ]
+  workflow_dispatch:        # manual run (first release / re-runs); supply notes below
+    inputs:
+      changelog:
+        description: "Release notes (used only for manual runs)"
+        required: false
+        default: ""
 
 permissions:
-  contents: write   # create the GitHub Release and attach the jar
+  contents: write   # create the release + tag
 
 jobs:
   publish:
+    if: github.event_name == 'workflow_dispatch' || github.event.pull_request.merged == true
     runs-on: ubuntu-latest
     steps:
       - name: Checkout
         uses: actions/checkout@v4
 
+      - name: Read mod_version
+        id: ver
+        run: echo "version=$(grep -E '^mod_version=' gradle.properties | cut -d= -f2 | tr -d '[:space:]')" >> "$GITHUB_OUTPUT"
+
+      - name: Skip if this version was already released
+        id: guard
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          tag="v${{ steps.ver.outputs.version }}"
+          if gh release view "$tag" --repo "$GITHUB_REPOSITORY" >/dev/null 2>&1; then
+            echo "skip=true" >> "$GITHUB_OUTPUT"
+            echo "::warning::Release $tag already exists — did you forget to bump mod_version? Skipping."
+          else
+            echo "skip=false" >> "$GITHUB_OUTPUT"
+          fi
+
       - name: Set up JDK 25
+        if: steps.guard.outputs.skip == 'false'
         uses: actions/setup-java@v4
         with:
           distribution: temurin
           java-version: 25
 
       - name: Set up Gradle
+        if: steps.guard.outputs.skip == 'false'
         uses: gradle/actions/setup-gradle@v4
 
       - name: Make gradlew executable
+        if: steps.guard.outputs.skip == 'false'
         run: chmod +x ./gradlew
 
       - name: Build
+        if: steps.guard.outputs.skip == 'false'
         run: ./gradlew build --stacktrace
 
-      - name: Publish to Modrinth & GitHub Releases
+      - name: Create the GitHub release & publish to Modrinth
+        if: steps.guard.outputs.skip == 'false'
         uses: Kir-Antipov/mc-publish@v3.3
         with:
           # ── Modrinth ────────────────────────────────────────────────
           modrinth-id: tJYeTacj
           modrinth-token: ${{ secrets.MODRINTH_TOKEN }}
 
-          # ── GitHub Release (auto-provided token) ────────────────────
+          # ── GitHub release (created at this tag by mc-publish) ───────
           github-token: ${{ secrets.GITHUB_TOKEN }}
+          github-tag: v${{ steps.ver.outputs.version }}
 
           # ── Artifact: primary mod jar only (skip dev/sources) ───────
           files: "build/libs/!(*-@(dev|sources|javadoc)).jar"
 
           # ── Metadata ────────────────────────────────────────────────
-          name: Foundry ${{ github.ref_name }}
-          changelog: ${{ github.event.release.body }}
+          name: Foundry v${{ steps.ver.outputs.version }}
+          version: ${{ steps.ver.outputs.version }}
+          changelog: ${{ github.event.pull_request.body || inputs.changelog }}
           version-type: release
           loaders: fabric
           game-versions: 26.1.2
