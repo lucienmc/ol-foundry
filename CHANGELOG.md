@@ -4,6 +4,14 @@ All notable changes to Foundry are documented here. The format is based on
 [Keep a Changelog](https://keepachangelog.com/en/1.1.0/), and this project aims to follow
 [Semantic Versioning](https://semver.org/).
 
+## [1.0.9] - 2026-06-06
+
+### Added
+
+- **Slag-brick dripstone accelerator** — place a Slag Bricks block between a lava source and a
+  hanging pointed-dripstone tip above a cauldron to speed up lava filling. Lava passes through
+  Slag Bricks to reach the dripstone below, and the drip rate is roughly 3× faster than vanilla.
+
 ## [1.0.8] - 2026-06-06
 
 ### Added
