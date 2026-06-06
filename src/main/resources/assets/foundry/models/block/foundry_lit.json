@@ -3,6 +3,7 @@
 	"credit": "Made with Blockbench",
 	"parent": "foundry:block/foundry",
 	"textures": {
-		"north": "foundry:block/foundry_front_lit"
+		"north": "foundry:block/foundry_front_lit",
+		"up": "foundry:block/foundry_top_lit"
 	}
 }

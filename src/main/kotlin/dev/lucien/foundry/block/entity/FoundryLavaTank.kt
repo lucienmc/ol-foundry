@@ -6,8 +6,6 @@ import net.fabricmc.fabric.api.transfer.v1.fluid.FluidConstants
 import net.fabricmc.fabric.api.transfer.v1.fluid.FluidVariant
 import net.fabricmc.fabric.api.transfer.v1.storage.base.SingleVariantStorage
 import net.fabricmc.fabric.api.transfer.v1.transaction.Transaction
-import net.minecraft.world.item.ItemStack
-import net.minecraft.world.item.Items
 import net.minecraft.world.level.material.Fluids
 import net.minecraft.world.level.storage.ValueInput
 import net.minecraft.world.level.storage.ValueOutput
@@ -46,13 +44,6 @@ class FoundryLavaTank(private val onChanged: () -> Unit) {
             tx.commit()
         }
         return true
-    }
-
-    /** Consumes a lava bucket from the input slot into the tank, returning the empty bucket (or null). */
-    fun tryConsumeBucket(bucketSlot: ItemStack): ItemStack? {
-        if (bucketSlot.isEmpty || !bucketSlot.`is`(Items.LAVA_BUCKET)) return null
-        if (!tryAddBucket()) return null
-        return ItemStack(Items.BUCKET)
     }
 
     /** Drains one full bucket of lava out of the tank if it holds at least that much; returns success. */
