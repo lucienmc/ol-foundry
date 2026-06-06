@@ -5,6 +5,9 @@ import dev.lucien.foundry.block.entity.FoundryBlockEntity
 import dev.lucien.foundry.item.LavaStorageComponent
 import dev.lucien.foundry.registry.ModBlockEntities
 import dev.lucien.foundry.registry.ModDataComponents
+import net.fabricmc.fabric.api.transfer.v1.context.ContainerItemContext
+import net.fabricmc.fabric.api.transfer.v1.fluid.FluidStorage
+import net.fabricmc.fabric.api.transfer.v1.storage.StorageUtil
 import net.minecraft.core.BlockPos
 import net.minecraft.core.particles.ParticleTypes
 import net.minecraft.server.level.ServerLevel
@@ -17,8 +20,6 @@ import net.minecraft.world.InteractionHand
 import net.minecraft.world.InteractionResult
 import net.minecraft.world.entity.player.Player
 import net.minecraft.world.item.ItemStack
-import net.minecraft.world.item.ItemUtils
-import net.minecraft.world.item.Items
 import net.minecraft.world.level.Level
 import net.minecraft.world.level.block.AbstractFurnaceBlock
 import net.minecraft.world.level.block.RenderShape
@@ -26,6 +27,7 @@ import net.minecraft.world.level.block.entity.BlockEntity
 import net.minecraft.world.level.block.entity.BlockEntityTicker
 import net.minecraft.world.level.block.entity.BlockEntityType
 import net.minecraft.world.level.block.state.BlockState
+import net.minecraft.world.level.material.Fluids
 import net.minecraft.world.phys.BlockHitResult
 
 class FoundryBlock(properties: Properties) : AbstractFurnaceBlock(properties) {
@@ -53,15 +55,20 @@ class FoundryBlock(properties: Properties) : AbstractFurnaceBlock(properties) {
         hand: InteractionHand,
         hit: BlockHitResult
     ): InteractionResult {
-        if (!stack.`is`(Items.LAVA_BUCKET)) return useWithoutItem(state, level, pos, player, hit)
+        val entity = level.getBlockEntity(pos) as? FoundryBlockEntity
+            ?: return useWithoutItem(state, level, pos, player, hit)
+
+        val itemFluid = ContainerItemContext.ofPlayerHand(player, hand).find(FluidStorage.ITEM)
+            ?: return useWithoutItem(state, level, pos, player, hit)
+        val holdsLava =
+            itemFluid.any { !it.isResourceBlank && it.resource.fluid == Fluids.LAVA && it.amount > 0L }
+        if (!holdsLava) return useWithoutItem(state, level, pos, player, hit)
+
         if (level.isClientSide) return InteractionResult.SUCCESS
-        val entity =
-            level.getBlockEntity(pos) as? FoundryBlockEntity ?: return InteractionResult.PASS
-        if (!entity.lava.tryAddBucket()) return InteractionResult.SUCCESS
-        // Keep the emptied bucket in the same hand slot for a single bucket (vanilla swap behavior).
-        player.setItemInHand(
-            hand, ItemUtils.createFilledResult(stack, player, ItemStack(Items.BUCKET))
-        )
+
+        // Drain lava from the held container (vanilla bucket or any modded cell) into the tank; the
+        // Transfer API swaps the emptied container back into the hand and handles creative mode.
+        StorageUtil.move(itemFluid, entity.lava.storage, { it.fluid == Fluids.LAVA }, Long.MAX_VALUE, null)
         return InteractionResult.SUCCESS
     }
 
