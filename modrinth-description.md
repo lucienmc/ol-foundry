@@ -22,9 +22,15 @@ You can fill the tank three ways: right-click with a lava bucket, drop buckets i
 Smelting ores and metals produces slag as a byproduct. It has a few uses:
 
 - Reprocess it in the Foundry to recover nuggets — mostly iron, sometimes gold, with one extra if there's lava in the tank
-- Craft it into slag bricks
+- Craft it into **slag bricks** — a decorative stone-like block, but also a functional one (see below)
 - Burn it as fuel
 - Compost it
+
+### Slag bricks and dripstone
+
+Place a slag bricks block between a lava source and a hanging pointed-dripstone tip, with a cauldron below. Lava will drip through the slag bricks at roughly **3× the normal rate**, filling the cauldron much faster than a vanilla setup would.
+
+It's a purely vanilla-adjacent contraption — dripstone, cauldron, a lava lake — with slag bricks as the one ingredient that ties it together. A quiet way to keep the Foundry's lava tank topped up without any fluid pipes.
 
 ## Other behaviour
 
