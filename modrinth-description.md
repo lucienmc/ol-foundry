@@ -1,67 +1,44 @@
 # Ol'Foundry
 
-Ol'Foundry adds one block: the Foundry, a smelter with a few mechanics the vanilla furnace doesn't have. It burns solid fuel like a furnace, but the smelting speed depends on which fuel you use, it has a lava tank that speeds things up, and most ore recipes leave behind slag that you can do something with.
+One block. The Foundry smelts like a furnace, but faster — and it makes a mess.
 
 <iframe width="560" height="315" src="https://www.youtube-nocookie.com/embed/kWQR4s7UyvA" title="YouTube video player" frameborder="0" allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share" allowfullscreen></iframe>
 
-## Fuel and lava
+## How it works
 
-Any furnace fuel works (plus a couple that normally don't burn). Smelting speed depends on which one you use:
+Any furnace fuel works. Speed depends on what you burn:
 
 - Most fuels — 1×
 - Coal / charcoal — 1.5×
 - Magma cream — 2×
 - Blaze rod — 3×
 
-The Foundry has a 4,000 mB (4 bucket) lava tank. While it holds lava, smelting runs twice as fast — so coal becomes 3× and a blaze rod 6× — and the tank drains slowly while it works.
-
-You can fill the tank three ways: right-click with a lava bucket, drop buckets into the bucket slot (they're consumed automatically), or pipe lava in with a fluid-transfer mod. Lava left in the tank stays with the block if you break it and place it again.
+The Foundry also has a 4-bucket lava tank. Fill it and smelting doubles in speed — stacks with the fuel bonus, so a blaze rod with lava hits 6×. The tank drains while it works. Fill it by hand, via the bucket slot, or pipe lava in from the side.
 
 ## Slag
 
-Smelting ores and metals produces slag as a byproduct. It has a few uses:
+Ore smelting drops slag as a byproduct. You can:
 
-- Reprocess it in the Foundry to recover nuggets — mostly iron, sometimes gold, with one extra if there's lava in the tank
-- Craft it into **slag bricks** — a decorative stone-like block, but also a functional one (see below)
-- Burn it as fuel
-- Compost it
+- Reprocess it for iron or gold nuggets (lava in the tank gives an extra roll)
+- Craft it into **slag bricks**
+- Burn it as fuel, or compost it
 
-### Slag bricks and dripstone
+**Slag bricks and dripstone:** put a slag bricks block between a lava source and a hanging dripstone tip above a cauldron. Lava drips through at 3× speed — a clean, pipeless way to keep the tank topped up.
 
-Place a slag bricks block between a lava source and a hanging pointed-dripstone tip, with a cauldron below. Lava will drip through the slag bricks at roughly **3× the normal rate**, filling the cauldron much faster than a vanilla setup would.
+## Other bits
 
-It's a purely vanilla-adjacent contraption — dripstone, cauldron, a lava lake — with slag bricks as the one ingredient that ties it together. A quiet way to keep the Foundry's lava tank topped up without any fluid pipes.
-
-## Other behaviour
-
-- The Foundry banks the experience from smelting and releases it when you take the output, the same way a furnace does.
-- A few recipes give more when lava is present — for example, ancient debris can drop extra netherite scrap.
-- Hoppers and pipes work per face: top inserts items to smelt, the sides take fuel and lava buckets, the bottom pulls out results and slag, and lava can be piped in from any side.
-
-## Recipes
-
-- Raw ores and raw ore blocks into ingots and metal blocks
-- Ores (stone, deepslate, and nether variants) into ingots
-- Cobblestone into stone, gravel into flint, sand into glass
-- Ancient debris into netherite scrap
-- Slag into nuggets
-
-Everything is visible in JEI, including byproduct chances and cook times.
-
-## Languages
-
-Ol'Foundry is fully translated into 11 languages:
-
-English, Français, Deutsch, Español, Italiano, Polski, Português (Brasil), Русский, 简体中文, 日本語, and 한국어.
-
-Spotted a mistake or want to add your language? Each translation is a single small JSON file — contributions are welcome.
+- Experience banks until you pull the output, same as a vanilla furnace
+- Hoppers work per face: top feeds input, sides take fuel and buckets, bottom pulls output and slag
+- All recipes and byproduct chances are in JEI
 
 ## Requirements
 
-- Fabric Loader and Fabric API
+- Fabric Loader + Fabric API
 - Minecraft 26.1.2
-- JEI is optional, for browsing recipes in-game
+- JEI optional
 
-Source and issues: [https://github.com/lucienmc/Foundry](https://github.com/lucienmc/ol-foundry) — MIT licensed.
+Source: [github.com/lucienmc/ol-foundry](https://github.com/lucienmc/ol-foundry) — MIT
 
-# I would also gladly hear your feedback and ideas
+---
+
+Translations: English, Français, Deutsch, Español, Italiano, Polski, Português (Brasil), Русский, 简体中文, 日本語, 한국어 — PRs welcome.
