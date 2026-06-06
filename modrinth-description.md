@@ -1,8 +1,8 @@
-# Foundry
+# Ol'Foundry
 
-Foundry adds one block: the Foundry, a smelter with a few mechanics the vanilla furnace doesn't have. It burns solid fuel like a furnace, but the smelting speed depends on which fuel you use, it has a lava tank that speeds things up, and most ore recipes leave behind slag that you can do something with.
+Ol'Foundry adds one block: the Foundry, a smelter with a few mechanics the vanilla furnace doesn't have. It burns solid fuel like a furnace, but the smelting speed depends on which fuel you use, it has a lava tank that speeds things up, and most ore recipes leave behind slag that you can do something with.
 
-Recipes are data-driven and show up in JEI.
+<iframe width="560" height="315" src="https://www.youtube-nocookie.com/embed/kWQR4s7UyvA" title="YouTube video player" frameborder="0" allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share" allowfullscreen></iframe>
 
 ## Fuel and lava
 
@@ -42,10 +42,20 @@ Smelting ores and metals produces slag as a byproduct. It has a few uses:
 
 Everything is visible in JEI, including byproduct chances and cook times.
 
+## Languages
+
+Ol'Foundry is fully translated into 11 languages:
+
+English, Français, Deutsch, Español, Italiano, Polski, Português (Brasil), Русский, 简体中文, 日本語, and 한국어.
+
+Spotted a mistake or want to add your language? Each translation is a single small JSON file — contributions are welcome.
+
 ## Requirements
 
 - Fabric Loader and Fabric API
 - Minecraft 26.1.2
 - JEI is optional, for browsing recipes in-game
 
-Source and issues: https://github.com/lucien-n/Foundry — MIT licensed.
+Source and issues: [https://github.com/lucienmc/Foundry](https://github.com/lucienmc/ol-foundry) — MIT licensed.
+
+# I would also gladly hear your feedback and ideas

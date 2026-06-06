@@ -1,0 +1,9 @@
+{
+  "block.foundry.foundry": "Литейная",
+  "block.foundry.slag_bricks": "Шлаковые кирпичи",
+  "item.foundry.slag": "Шлак",
+  "item.foundry.foundry": "Литейная",
+  "item.foundry.slag_bricks": "Шлаковый кирпич",
+  "creativeTab.foundry": "Литейная",
+  "container.foundry.foundry": "Литейная"
+}

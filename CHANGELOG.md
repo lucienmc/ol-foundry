@@ -4,6 +4,12 @@ All notable changes to Foundry are documented here. The format is based on
 [Keep a Changelog](https://keepachangelog.com/en/1.1.0/), and this project aims to follow
 [Semantic Versioning](https://semver.org/).
 
+## [1.0.5] - 2026-06-06
+
+### Added
+- Translations for 10 languages: French, German, Spanish, Simplified Chinese, Russian, Brazilian
+  Portuguese, Japanese, Korean, Italian, and Polish.
+
 ## [1.0.4] - 2026-06-05
 
 ### Added
