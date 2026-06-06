@@ -70,7 +70,6 @@ class FoundryJeiPlugin : mezz.jei.api.IModPlugin {
     private fun fuelDisplays(level: Level): List<FoundryFuelDisplay> {
         val cfg = FoundryConfigManager.config
 
-        // Items shown in their own tiered entries — excluded from the generic "any other fuel" pile.
         val highlighted = setOf(
             Items.COAL, Items.CHARCOAL, Items.BLAZE_ROD, Items.MAGMA_CREAM, ModItems.SLAG, Items.LAVA_BUCKET
         )
@@ -82,7 +81,8 @@ class FoundryJeiPlugin : mezz.jei.api.IModPlugin {
         return listOf(
             FoundryFuelDisplay(
                 listOf(ItemStack(Items.COAL), ItemStack(Items.CHARCOAL)),
-                cfg.coalFuelSpeedMultiplier, null,
+                cfg.coalFuelSpeedMultiplier,
+                fuelValues.burnDuration(ItemStack(Items.COAL)),
             ),
             FoundryFuelDisplay(
                 listOf(ItemStack(Items.MAGMA_CREAM)),
@@ -90,7 +90,8 @@ class FoundryJeiPlugin : mezz.jei.api.IModPlugin {
             ),
             FoundryFuelDisplay(
                 listOf(ItemStack(Items.BLAZE_ROD)),
-                cfg.blazeRodFuelSpeedMultiplier, null,
+                cfg.blazeRodFuelSpeedMultiplier,
+                fuelValues.burnDuration(ItemStack(Items.BLAZE_ROD)),
             ),
             FoundryFuelDisplay(
                 listOf(ItemStack(ModItems.SLAG)),
@@ -104,7 +105,7 @@ class FoundryJeiPlugin : mezz.jei.api.IModPlugin {
             FoundryFuelDisplay(
                 listOf(ItemStack(Items.LAVA_BUCKET)),
                 cfg.lavaSpeedMultiplier, null,
-                note = "Boosts the active fuel while the tank holds lava",
+                note = "Lava tank booster",
             ),
         )
     }

@@ -1,0 +1,8 @@
+{
+  "type": "foundry:foundry_smelting",
+  "ingredient": { "item": "minecraft:raw_iron" },
+  "result": { "id": "minecraft:iron_ingot", "count": 1 },
+  "byproduct_chance": 0.35,
+  "cooking_time": 100,
+  "experience": 0.7
+}
