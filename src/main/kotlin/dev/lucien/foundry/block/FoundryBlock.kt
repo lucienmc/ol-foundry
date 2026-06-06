@@ -59,7 +59,10 @@ class FoundryBlock(properties: Properties) : AbstractFurnaceBlock(properties) {
             level.getBlockEntity(pos) as? FoundryBlockEntity ?: return InteractionResult.PASS
         if (!entity.lava.tryAddBucket()) return InteractionResult.SUCCESS
         // Keep the emptied bucket in the same hand slot for a single bucket (vanilla swap behavior).
-        player.setItemInHand(hand, ItemUtils.createFilledResult(stack, player, ItemStack(Items.BUCKET)))
+        player.setItemInHand(
+            hand,
+            ItemUtils.createFilledResult(stack, player, ItemStack(Items.BUCKET))
+        )
         return InteractionResult.SUCCESS
     }
 
@@ -101,6 +104,7 @@ class FoundryBlock(properties: Properties) : AbstractFurnaceBlock(properties) {
     override fun animateTick(state: BlockState, level: Level, pos: BlockPos, random: RandomSource) {
         if (!state.getValue(LIT)) return
 
+
         val x = pos.x + 0.5
         val y = pos.y.toDouble()
         val z = pos.z + 0.5
@@ -111,7 +115,16 @@ class FoundryBlock(properties: Properties) : AbstractFurnaceBlock(properties) {
             )
         }
 
-        level.addParticle(ParticleTypes.SMOKE, x, y + 1.8, z, 0.0, 0.0, 0.0)
+        val foundry = level.getBlockEntity(pos) as? FoundryBlockEntity ?: return
+        if (foundry.lava.hasLava) {
+            repeat(random.nextInt(2) + 2) {
+                level.addParticle(ParticleTypes.LARGE_SMOKE, x, y + 1.0, z, 0.02, 0.2, 0.02)
+            }
+        }
+
+        repeat(random.nextInt(3) + 4) {
+            level.addParticle(ParticleTypes.SMOKE, x, y + 1.0, z, 0.02, 0.2, 0.02)
+        }
 
         if (random.nextDouble() < 0.3) {
             val facing = state.getValue(FACING)
