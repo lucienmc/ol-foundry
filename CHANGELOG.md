@@ -4,6 +4,20 @@ All notable changes to Foundry are documented here. The format is based on
 [Keep a Changelog](https://keepachangelog.com/en/1.1.0/), and this project aims to follow
 [Semantic Versioning](https://semver.org/).
 
+## [1.0.8] - 2026-06-06
+
+### Added
+
+- A **Foundry Fuels** page in JEI, listing every fuel with its smelting-speed multiplier and burn
+  time: coal/charcoal, magma cream, blaze rod, slag, lava, and any other furnace fuel at the base rate.
+- Click the smelting arrow in the Foundry screen to jump to its recipes in JEI.
+- A recipe-transfer (+) button in JEI that loads a recipe's ingredient straight into the input slot.
+
+### Changed
+
+- Fuels moved out of the JEI smelting recipe onto their own dedicated page, so each recipe shows just
+  its input and outputs.
+
 ## [1.0.7] - 2026-06-06
 
 ### Added

@@ -1,6 +1,5 @@
 package dev.lucien.foundry.jei
 
-import dev.lucien.foundry.config.FoundryConfigManager
 import dev.lucien.foundry.registry.ModBlocks
 import mezz.jei.api.gui.builder.IRecipeLayoutBuilder
 import mezz.jei.api.gui.widgets.IRecipeExtrasBuilder
@@ -10,10 +9,7 @@ import mezz.jei.api.recipe.types.IRecipeType
 import mezz.jei.api.recipe.category.IRecipeCategory
 import net.minecraft.ChatFormatting
 import net.minecraft.network.chat.Component
-import net.minecraft.network.chat.FormattedText
-import net.minecraft.network.chat.MutableComponent
 import net.minecraft.world.item.ItemStack
-import net.minecraft.world.item.Items
 
 class FoundryRecipeCategory(guiHelper: IGuiHelper) : IRecipeCategory<FoundryRecipeDisplay> {
 
@@ -101,32 +97,6 @@ class FoundryRecipeCategory(guiHelper: IGuiHelper) : IRecipeCategory<FoundryReci
                     }
                 }
         }
-
-        // Any furnace fuel works at the base rate; these smelt faster. Lava multiplies the active fuel speed.
-        val config = FoundryConfigManager.config
-        builder.addInputSlot(FUEL_X, FUEL_Y)
-            .addItemStacks(listOf(ItemStack(Items.COAL), ItemStack(Items.CHARCOAL)))
-            .addRichTooltipCallback { _, tooltip ->
-                tooltip.add(speedLine(config.coalFuelSpeedMultiplier).withStyle(ChatFormatting.GRAY))
-            }
-
-        builder.addInputSlot(FUEL_X + 25, FUEL_Y)
-            .add(Items.MAGMA_CREAM)
-            .addRichTooltipCallback { _, tooltip ->
-                tooltip.add(speedLine(config.magmaCreamFuelSpeedMultiplier).withStyle(ChatFormatting.GOLD))
-            }
-
-        builder.addInputSlot(FUEL_X + 50, FUEL_Y)
-            .add(Items.BLAZE_ROD)
-            .addRichTooltipCallback { _, tooltip ->
-                tooltip.add(speedLine(config.blazeRodFuelSpeedMultiplier).withStyle(ChatFormatting.GOLD))
-            }
-
-        builder.addInputSlot(FUEL_X + 75, FUEL_Y)
-            .add(Items.LAVA_BUCKET)
-            .addRichTooltipCallback { _, tooltip ->
-                tooltip.add(speedLine(config.lavaSpeedMultiplier).withStyle(ChatFormatting.GRAY))
-            }
     }
 
     override fun createRecipeExtras(
@@ -136,39 +106,17 @@ class FoundryRecipeCategory(guiHelper: IGuiHelper) : IRecipeCategory<FoundryReci
     ) {
         builder.addAnimatedRecipeArrow(display.cookingTime)
             .setPosition(ARROW_X, ARROW_Y)
-
-        builder.addText(
-            listOf<FormattedText>(
-                Component.literal("Fuels:").withStyle(ChatFormatting.DARK_GRAY)
-            ),
-            /* maxWidth = */ 50,
-            /* maxHeight = */ 9,
-        ).setPosition(FUEL_X, FUEL_Y - 11)
     }
 
     private companion object {
-        /** "1.5× smelting speed", trimming a trailing `.0` so whole multipliers read as "2×". */
-        fun speedLine(multiplier: Double): MutableComponent {
-            val text = if (multiplier == multiplier.toLong().toDouble()) {
-                multiplier.toLong().toString()
-            } else {
-                multiplier.toString()
-            }
-            return Component.literal("$text× smelting speed")
-        }
+        const val WIDTH = 160
+        const val HEIGHT = 80
 
-        const val WIDTH  = 160
-        const val HEIGHT = 110
-
-        // Top row: input → arrow → output / byproduct
-        const val SLOT_Y   = 5
-        const val INPUT_X  = 10
-        const val ARROW_X  = 40
-        const val ARROW_Y  = 8
+        // input → arrow → output / byproduct (stacked on the right)
+        const val SLOT_Y = 5
+        const val INPUT_X = 10
+        const val ARROW_X = 40
+        const val ARROW_Y = 8
         const val OUTPUT_X = 110
-
-        // Bottom row: fuel items
-        const val FUEL_X = 5
-        const val FUEL_Y = 83
     }
 }
