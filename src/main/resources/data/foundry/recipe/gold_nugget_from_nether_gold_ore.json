@@ -1,0 +1,8 @@
+{
+  "type": "foundry:foundry_smelting",
+  "ingredient": { "item": "minecraft:nether_gold_ore" },
+  "result": { "id": "minecraft:gold_nugget", "count": 1 },
+  "byproduct_chance": 0.5,
+  "cooking_time": 100,
+  "experience": 1.0
+}
