@@ -144,6 +144,7 @@ class FoundryMenu private constructor(
 
         const val PLAYER_INV_X = 8
         const val PLAYER_INV_Y = 84
+        const val PLAYER_INV_SLOT_START = FoundryBlockEntity.INVENTORY_SIZE
 
         const val FLAME_X = 26
         const val FLAME_Y = 36
