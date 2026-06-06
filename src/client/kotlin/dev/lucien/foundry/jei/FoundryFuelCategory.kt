@@ -2,6 +2,8 @@ package dev.lucien.foundry.jei
 
 import dev.lucien.foundry.registry.ModBlocks
 import mezz.jei.api.gui.builder.IRecipeLayoutBuilder
+import mezz.jei.api.gui.placement.HorizontalAlignment
+import mezz.jei.api.gui.placement.VerticalAlignment
 import mezz.jei.api.gui.widgets.IRecipeExtrasBuilder
 import mezz.jei.api.helpers.IGuiHelper
 import mezz.jei.api.recipe.IFocusGroup
@@ -11,8 +13,8 @@ import net.minecraft.ChatFormatting
 import net.minecraft.network.chat.Component
 import net.minecraft.network.chat.FormattedText
 import net.minecraft.world.item.ItemStack
+import java.text.NumberFormat
 
-/** Heat-source style tab listing each Foundry fuel and its smelting-speed / burn-time efficiency. */
 class FoundryFuelCategory(guiHelper: IGuiHelper) : IRecipeCategory<FoundryFuelDisplay> {
 
     private val icon = guiHelper.createDrawableItemStack(ItemStack(ModBlocks.FOUNDRY))
@@ -21,45 +23,53 @@ class FoundryFuelCategory(guiHelper: IGuiHelper) : IRecipeCategory<FoundryFuelDi
     override fun getTitle(): Component = Component.literal("Foundry Fuels")
     override fun getWidth() = WIDTH
     override fun getHeight() = HEIGHT
-    override fun getIcon(): mezz.jei.api.gui.drawable.IDrawable = icon
+    override fun getIcon() = icon
 
-    override fun setRecipe(
-        builder: IRecipeLayoutBuilder,
-        display: FoundryFuelDisplay,
-        focuses: IFocusGroup,
-    ) {
-        builder.addInputSlot(SLOT_X, SLOT_Y).addItemStacks(display.fuels)
+    override fun setRecipe(builder: IRecipeLayoutBuilder, display: FoundryFuelDisplay, focuses: IFocusGroup) {
+        builder.addInputSlot(SLOT_X, SLOT_Y).setStandardSlotBackground().addItemStacks(display.fuels)
     }
 
-    override fun createRecipeExtras(
-        builder: IRecipeExtrasBuilder,
-        display: FoundryFuelDisplay,
-        focuses: IFocusGroup,
-    ) {
+    override fun createRecipeExtras(builder: IRecipeExtrasBuilder, display: FoundryFuelDisplay, focuses: IFocusGroup) {
+        builder.addAnimatedRecipeFlame(display.burnTimeTicks ?: 200).setPosition(SLOT_X, 0)
+
         val lines = buildList<FormattedText> {
-            add(
-                Component.literal("${speedText(display.speedMultiplier)}× smelting speed")
-                    .withStyle(ChatFormatting.GOLD)
-            )
-            add(
-                (display.burnTimeTicks
-                    ?.let { Component.literal("Burns %.1fs".format(it / 20f)) }
-                    ?: Component.literal("Vanilla burn time"))
-                    .withStyle(ChatFormatting.GRAY)
-            )
-            display.note?.let { add(Component.literal(it).withStyle(ChatFormatting.AQUA)) }
+            when {
+                display.burnTimeTicks != null -> add(smeltCountText(display.burnTimeTicks))
+                display.note != null -> add(Component.literal(display.note))
+            }
+            if (display.speedMultiplier != 1.0)
+                add(Component.literal("${speedText(display.speedMultiplier)}× smelting speed").withStyle(ChatFormatting.GOLD))
         }
-        builder.addText(lines, WIDTH - TEXT_X - 2, HEIGHT - 6).setPosition(TEXT_X, 4)
+
+        if (lines.isNotEmpty()) {
+            builder.addText(lines, WIDTH - TEXT_X, HEIGHT)
+                .setPosition(TEXT_X, 0)
+                .setTextAlignment(HorizontalAlignment.CENTER)
+                .setTextAlignment(VerticalAlignment.CENTER)
+                .setColor(TEXT_COLOR)
+        }
     }
 
     private companion object {
         const val WIDTH = 150
         const val HEIGHT = 34
-        const val SLOT_X = 4
-        const val SLOT_Y = 8
-        const val TEXT_X = 28
+        const val SLOT_X = 1
+        // Slot top at HEIGHT/2 so the flame fills the upper half — the slot bottom clips 1px below HEIGHT,
+        // intentional in JEI's vanilla fuel categories.
+        const val SLOT_Y = HEIGHT / 2
+        const val TEXT_X = 20  // 1px margin + 18px slot + 1px gap
+        const val TEXT_COLOR = -8355712  // 0x808080, matches JEI's own fuel-category gray
 
-        /** Trims a trailing `.0` so whole multipliers read as "2" not "2.0". */
+        fun smeltCountText(burnTimeTicks: Int): Component {
+            val items = burnTimeTicks / 200.0
+            return if (items == 1.0) {
+                Component.translatable("gui.jei.category.fuel.smeltCount.single")
+            } else {
+                val nf = NumberFormat.getNumberInstance().also { it.maximumFractionDigits = 2 }
+                Component.translatable("gui.jei.category.fuel.smeltCount", nf.format(items))
+            }
+        }
+
         fun speedText(multiplier: Double): String =
             if (multiplier == multiplier.toLong().toDouble()) multiplier.toLong().toString()
             else multiplier.toString()

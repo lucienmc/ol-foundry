@@ -8,8 +8,16 @@ All notable changes to Foundry are documented here. The format is based on
 
 ### Added
 
-- A **Foundry Fuels** page in JEI, listing every fuel with its smelting-speed multiplier and burn
-  time: coal/charcoal, magma cream, blaze rod, slag, lava, and any other furnace fuel at the base rate.
+- All vanilla blasting recipes now work in the Foundry: iron, gold, copper ores and their raw forms,
+  nether gold ore, nether quartz ore, and ancient debris.
+- Ore blocks produce **Slag** as a byproduct (70% chance); raw ores have a lower chance (35%).
+- **Slag reprocessing** — smelt Slag to recover an iron or gold nugget (70 / 30 split). With lava in
+  the tank, you always get a second nugget roll.
+- A **Foundry Fuels** page in JEI styled after the vanilla blast-furnace fuel tab: each entry shows
+  an animated flame, the fuel item, how many items it smelts at base speed, and a second line for
+  fuels with a speed bonus (coal ×1.5, magma cream ×2, blaze rod ×3).
+- The JEI smelting recipe now shows the Foundry's actual GUI as its background, with an animated
+  flame and a fuel slot that cycles through every valid furnace fuel.
 - Click the smelting arrow in the Foundry screen to jump to its recipes in JEI.
 - A recipe-transfer (+) button in JEI that loads a recipe's ingredient straight into the input slot.
 
