@@ -30,8 +30,14 @@ data class FoundryConfig(
         return FoundryConfig(
             baseFuelSpeedMultiplier = speed(baseFuelSpeedMultiplier, d.baseFuelSpeedMultiplier),
             coalFuelSpeedMultiplier = speed(coalFuelSpeedMultiplier, d.coalFuelSpeedMultiplier),
-            magmaCreamFuelSpeedMultiplier = speed(magmaCreamFuelSpeedMultiplier, d.magmaCreamFuelSpeedMultiplier),
-            blazeRodFuelSpeedMultiplier = speed(blazeRodFuelSpeedMultiplier, d.blazeRodFuelSpeedMultiplier),
+            magmaCreamFuelSpeedMultiplier = speed(
+                magmaCreamFuelSpeedMultiplier,
+                d.magmaCreamFuelSpeedMultiplier
+            ),
+            blazeRodFuelSpeedMultiplier = speed(
+                blazeRodFuelSpeedMultiplier,
+                d.blazeRodFuelSpeedMultiplier
+            ),
             lavaSpeedMultiplier = speed(lavaSpeedMultiplier, d.lavaSpeedMultiplier),
             lavaTankCapacityBuckets =
                 (if (lavaTankCapacityBuckets <= 0) d.lavaTankCapacityBuckets else lavaTankCapacityBuckets)
