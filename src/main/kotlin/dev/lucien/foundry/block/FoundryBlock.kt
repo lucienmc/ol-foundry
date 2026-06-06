@@ -60,8 +60,7 @@ class FoundryBlock(properties: Properties) : AbstractFurnaceBlock(properties) {
         if (!entity.lava.tryAddBucket()) return InteractionResult.SUCCESS
         // Keep the emptied bucket in the same hand slot for a single bucket (vanilla swap behavior).
         player.setItemInHand(
-            hand,
-            ItemUtils.createFilledResult(stack, player, ItemStack(Items.BUCKET))
+            hand, ItemUtils.createFilledResult(stack, player, ItemStack(Items.BUCKET))
         )
         return InteractionResult.SUCCESS
     }
@@ -117,12 +116,12 @@ class FoundryBlock(properties: Properties) : AbstractFurnaceBlock(properties) {
 
         val foundry = level.getBlockEntity(pos) as? FoundryBlockEntity ?: return
         if (foundry.lava.hasLava) {
-            repeat(random.nextInt(2) + 2) {
+            repeat(random.nextInt(2) + 1) {
                 level.addParticle(ParticleTypes.LARGE_SMOKE, x, y + 1.0, z, 0.02, 0.2, 0.02)
             }
         }
 
-        repeat(random.nextInt(3) + 4) {
+        repeat(random.nextInt(2) + 1) {
             level.addParticle(ParticleTypes.SMOKE, x, y + 1.0, z, 0.02, 0.2, 0.02)
         }
 
