@@ -58,6 +58,7 @@ Before finishing any code change, run through this checklist:
 | `FoundryClient.kt` | Client init — screen registration + lava tooltip (`ItemTooltipCallback`) |
 | `jei/FoundryRecipeCategory.kt` / `jei/FoundryJeiPlugin.kt` | JEI category + plugin (reads `recipeAccess().synchronizedRecipes`) |
 | `assets/foundry/textures/gui/...` | `foundry.png` GUI sheet + animated `container/foundry/` sprites (flame, arrow, lava fill) |
+| `mixin/PointedDripstoneBlockMixin.java` | Dripstone accelerator — Java (not Kotlin; see Mixin pitfall below) |
 
 ---
 
@@ -131,6 +132,13 @@ code — read them there rather than duplicating here.
 - **JEI** (`FoundryJeiPlugin` / `FoundryRecipeCategory`): recipes read from
   `synchronizedRecipes.getAllOfType(...)` — JSON is the single source of truth. Slag is an output slot, so
   left-clicking it lists every byproduct recipe. Fuel tooltips read the live `FoundryConfig` multipliers.
+- **Slag bricks dripstone accelerator:** `PointedDripstoneBlockMixin.java` injects into two methods of
+  `PointedDripstoneBlock`. `canDripThrough` (private static) is overridden to return `true` for slag
+  bricks so the upward fluid search isn't blocked. `randomTick` fires two extra `maybeTransferFluid`
+  calls when a downward tip (`THICKNESS == TIP`, `TIP_DIRECTION == DOWN`) has slag bricks at `pos.above()`,
+  giving ~3× fill rate. **Must be Java:** Kotlin `companion object` emits a non-private static `Companion`
+  field that Mixin rejects when merging into the target class. Any future mixin targeting a private static
+  method needs the same treatment.
 
 ---
 
