@@ -1,0 +1,8 @@
+{
+  "type": "foundry:foundry_smelting",
+  "ingredient": { "item": "minecraft:ancient_debris" },
+  "result": { "id": "minecraft:netherite_scrap", "count": 1 },
+  "byproduct_chance": 0.0,
+  "cooking_time": 100,
+  "experience": 2.0
+}
