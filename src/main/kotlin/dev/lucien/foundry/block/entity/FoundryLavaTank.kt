@@ -36,16 +36,6 @@ class FoundryLavaTank(private val onChanged: () -> Unit) {
         onChanged()
     }
 
-    /** Inserts one bucket of lava if the tank has room; returns whether it fit. */
-    fun tryAddBucket(): Boolean {
-        if (capacityDroplets - storage.amount < FluidConstants.BUCKET) return false
-        Transaction.openOuter().use { tx ->
-            storage.insert(FluidVariant.of(Fluids.LAVA), FluidConstants.BUCKET, tx)
-            tx.commit()
-        }
-        return true
-    }
-
     /** Drains one full bucket of lava out of the tank if it holds at least that much; returns success. */
     fun tryRemoveBucket(): Boolean {
         if (storage.amount < FluidConstants.BUCKET) return false
