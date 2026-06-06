@@ -30,8 +30,11 @@ Before finishing any code change, run through this checklist:
 4. **`CHANGELOG.md` is the release notes — not the PR body.** The release workflow publishes the
    `## [<mod_version>]` section of `CHANGELOG.md` verbatim as the Modrinth changelog, so keep that
    section clean and player-facing (no file/class names or internal jargon). PR descriptions are for
-   **reviewers** — explain what changed and why, infra detail welcome.
-5. **Bump `mod_version` in `gradle.properties`** on any PR that ships a user-facing change (patch for
+   **reviewers** — explain what changed and why, infra detail welcome. Keep both short.
+5. **Write like a human.** Any user-facing text (changelog entries, Modrinth description, PR bodies,
+   in-game strings) should read naturally. No em-dash overuse, no bullet-pointing everything, no filler
+   phrases. Short sentences over long ones. `modrinth-description.md` is the style reference.
+6. **Bump `mod_version` in `gradle.properties`** on any PR that ships a user-facing change (patch for
    fixes/small features), and give that version its own `CHANGELOG.md` section. Merging into `main`
    pushes to the release workflow (`.github/workflows/release.yml`), which tags `v<mod_version>`,
    creates a GitHub release, and publishes to Modrinth **only if that version isn't already released**
