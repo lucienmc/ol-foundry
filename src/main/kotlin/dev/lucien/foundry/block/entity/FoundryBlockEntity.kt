@@ -1,5 +1,6 @@
 package dev.lucien.foundry.block.entity
 
+import dev.lucien.foundry.block.entity.FoundryBlockEntity.Companion.PROGRESS_RESOLUTION
 import dev.lucien.foundry.config.FoundryConfigManager
 import dev.lucien.foundry.menu.FoundryMenu
 import dev.lucien.foundry.recipe.FoundryRecipe
@@ -8,6 +9,10 @@ import dev.lucien.foundry.registry.ModBlockEntities
 import dev.lucien.foundry.registry.ModItems
 import dev.lucien.foundry.registry.ModRecipes
 import dev.lucien.foundry.util.ImplementedContainer
+import net.fabricmc.fabric.api.transfer.v1.context.ContainerItemContext
+import net.fabricmc.fabric.api.transfer.v1.fluid.FluidStorage
+import net.fabricmc.fabric.api.transfer.v1.item.ContainerStorage
+import net.fabricmc.fabric.api.transfer.v1.storage.StorageUtil
 import net.minecraft.core.BlockPos
 import net.minecraft.core.Direction
 import net.minecraft.core.HolderLookup
@@ -34,6 +39,7 @@ import net.minecraft.world.level.Level
 import net.minecraft.world.level.block.AbstractFurnaceBlock
 import net.minecraft.world.level.block.entity.BlockEntity
 import net.minecraft.world.level.block.state.BlockState
+import net.minecraft.world.level.material.Fluids
 import net.minecraft.world.level.storage.ValueInput
 import net.minecraft.world.level.storage.ValueOutput
 import net.minecraft.world.phys.Vec3
@@ -57,25 +63,25 @@ class FoundryBlockEntity(pos: BlockPos, blockState: BlockState) :
     }
 
     override fun canPlaceItemThroughFace(
-        index: Int,
-        stack: ItemStack,
-        direction: Direction?
-    ): Boolean =
-        when (index) {
-            INPUT_SLOT -> isSmeltable(stack)
-            FUEL_SLOT -> !stack.`is`(Items.LAVA_BUCKET) && !isSmeltable(stack)
-            LAVA_BUCKET_SLOT -> stack.`is`(Items.LAVA_BUCKET)
-            else -> false
-        }
+        index: Int, stack: ItemStack, direction: Direction?
+    ): Boolean = when (index) {
+        INPUT_SLOT -> isSmeltable(stack)
+        FUEL_SLOT -> !providesLava(stack) && !isSmeltable(stack)
+        LAVA_BUCKET_SLOT -> providesLava(stack)
+        else -> false
+    }
 
-    private fun isSmeltable(stack: ItemStack): Boolean =
-        isSmeltable(level ?: return true, stack)
+    private fun isSmeltable(stack: ItemStack): Boolean = isSmeltable(level ?: return true, stack)
 
     override fun canTakeItemThroughFace(
-        index: Int,
-        stack: ItemStack,
-        direction: Direction
-    ): Boolean = index in EXTRACT_SLOTS
+        index: Int, stack: ItemStack, direction: Direction
+    ): Boolean {
+        if (index == LAVA_BUCKET_SLOT) {
+            return stack.`is`(Items.BUCKET)
+        }
+
+        return index in EXTRACT_SLOTS
+    }
 
     val lava = FoundryLavaTank { setChanged() }
     val state = FoundryState()
@@ -105,15 +111,13 @@ class FoundryBlockEntity(pos: BlockPos, blockState: BlockState) :
     }
 
     private fun serverTick(level: ServerLevel) {
-        processBucketSlot()
+        drainLavaInput()
 
         val inputStack = items[INPUT_SLOT]
         val recipeInput = FoundryRecipeInput(inputStack)
 
-        val recipeHolder =
-            level.recipeAccess().synchronizedRecipes
-                .getFirstMatch(ModRecipes.FOUNDRY_RECIPE_TYPE, recipeInput, level)
-                .orElse(null)
+        val recipeHolder = level.recipeAccess().synchronizedRecipes
+            .getFirstMatch(ModRecipes.FOUNDRY_RECIPE_TYPE, recipeInput, level).orElse(null)
 
         if (tickProgress(recipeHolder?.value(), level)) setChanged()
 
@@ -123,8 +127,30 @@ class FoundryBlockEntity(pos: BlockPos, blockState: BlockState) :
         }
     }
 
-    private fun processBucketSlot() {
-        lava.tryConsumeBucket(items[LAVA_BUCKET_SLOT])?.let { items[LAVA_BUCKET_SLOT] = it }
+    /**
+     * Pulls lava from whatever fluid-bearing item sits in the lava slot into the tank, via the Fabric
+     * Transfer API. Works for vanilla lava buckets and any modded container exposing `FluidStorage.ITEM`;
+     * the context writes the emptied container back into the slot, so a hopper can then pull it out.
+     */
+    private fun drainLavaInput() {
+        if (items[LAVA_BUCKET_SLOT].isEmpty) return
+        val slot = ContainerStorage.of(this, null).getSlot(LAVA_BUCKET_SLOT)
+        val itemFluid = ContainerItemContext.ofSingleSlot(slot).find(FluidStorage.ITEM) ?: return
+        val moved = StorageUtil.move(
+            itemFluid,
+            lava.storage,
+            { it.fluid == Fluids.LAVA },
+            Long.MAX_VALUE,
+            null
+        )
+        if (moved > 0L) setChanged()
+    }
+
+    /** True if [stack] currently holds lava (a full bucket or any modded lava container). */
+    private fun providesLava(stack: ItemStack): Boolean {
+        if (stack.isEmpty) return false
+        val fluid = ContainerItemContext.withConstant(stack).find(FluidStorage.ITEM) ?: return false
+        return fluid.any { !it.isResourceBlank && it.resource.fluid == Fluids.LAVA && it.amount > 0L }
     }
 
     private fun tickProgress(recipe: FoundryRecipe?, level: ServerLevel): Boolean {
@@ -147,8 +173,7 @@ class FoundryBlockEntity(pos: BlockPos, blockState: BlockState) :
         if (state.smeltProgress == 0) state.smeltTotal = smelting.cookingTime * PROGRESS_RESOLUTION
         val hasLavaBoost = lava.hasLava
         val speed = state.fuelSpeed.coerceAtLeast(1)
-        state.smeltProgress +=
-            if (hasLavaBoost) (speed * FoundryConfigManager.config.lavaSpeedMultiplier).roundToInt() else speed
+        state.smeltProgress += if (hasLavaBoost) (speed * FoundryConfigManager.config.lavaSpeedMultiplier).roundToInt() else speed
         if (hasLavaBoost) lava.drainForBoost()
 
         if (state.smeltProgress >= state.smeltTotal) {
@@ -210,9 +235,8 @@ class FoundryBlockEntity(pos: BlockPos, blockState: BlockState) :
 
         // A pooled recipe's exact output isn't known until it's rolled, so require an empty
         // result slot to guarantee whatever is produced can be placed.
-        val hasOutputRoom =
-            if (recipe.isPooled) RESULT_SLOTS.any { items[it].isEmpty }
-            else recipe.result.create().let { result -> RESULT_SLOTS.any { canFitInSlot(it, result) } }
+        val hasOutputRoom = if (recipe.isPooled) RESULT_SLOTS.any { items[it].isEmpty }
+        else recipe.result.create().let { result -> RESULT_SLOTS.any { canFitInSlot(it, result) } }
         if (!hasOutputRoom) return false
 
         if (recipe.byproductChance > 0f) {
@@ -316,7 +340,9 @@ class FoundryBlockEntity(pos: BlockPos, blockState: BlockState) :
         val RESULT_SLOTS = intArrayOf(OUTPUT_SLOT, OUTPUT_SLOT_2, OUTPUT_SLOT_3)
 
         /** Slots a hopper may pull from (bottom face). */
-        val EXTRACT_SLOTS = intArrayOf(OUTPUT_SLOT, OUTPUT_SLOT_2, OUTPUT_SLOT_3, BYPRODUCT_SLOT)
+        val EXTRACT_SLOTS = intArrayOf(
+            OUTPUT_SLOT, OUTPUT_SLOT_2, OUTPUT_SLOT_3, BYPRODUCT_SLOT, LAVA_BUCKET_SLOT
+        )
 
         private val SLOTS_TOP = intArrayOf(INPUT_SLOT)
         private val SLOTS_SIDE = intArrayOf(FUEL_SLOT, LAVA_BUCKET_SLOT)
@@ -332,10 +358,11 @@ class FoundryBlockEntity(pos: BlockPos, blockState: BlockState) :
 
         fun isSmeltable(level: Level, stack: ItemStack): Boolean {
             val input = FoundryRecipeInput(stack)
-            return level.recipeAccess()
-                .synchronizedRecipes
-                .getFirstMatch(ModRecipes.FOUNDRY_RECIPE_TYPE, input, level)
-                .isPresent
+            return level.recipeAccess().synchronizedRecipes.getFirstMatch(
+                ModRecipes.FOUNDRY_RECIPE_TYPE,
+                input,
+                level
+            ).isPresent
         }
 
         @JvmStatic
