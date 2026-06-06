@@ -13,7 +13,9 @@ Any furnace fuel works. Speed depends on what you burn:
 - Magma cream — 2×
 - Blaze rod — 3×
 
-The Foundry also has a 4-bucket lava tank. Fill it and smelting doubles in speed — stacks with the fuel bonus, so a blaze rod with lava hits 6×. The tank drains while it works. Fill it by hand, via the bucket slot, or pipe lava in from the side.
+The Foundry also has a 4-bucket lava tank. Fill it and smelting doubles in speed — stacks with the fuel bonus, so a
+blaze rod with lava hits 6×. The tank drains while it works. Fill it by hand, via the bucket slot, or pipe lava in from
+the side.
 
 ## Slag
 
@@ -23,7 +25,8 @@ Ore smelting drops slag as a byproduct. You can:
 - Craft it into **slag bricks**
 - Burn it as fuel, or compost it
 
-**Slag bricks and dripstone:** put a slag bricks block between a lava source and a hanging dripstone tip above a cauldron. Lava drips through at 3× speed — a clean, pipeless way to keep the tank topped up.
+**Slag bricks and dripstone:** put a slag bricks block between a lava source and a hanging dripstone tip above a
+cauldron. Lava drips through at 3× speed.
 
 ## Other bits
 
@@ -41,4 +44,5 @@ Source: [github.com/lucienmc/ol-foundry](https://github.com/lucienmc/ol-foundry)
 
 ---
 
-Translations: English, Français, Deutsch, Español, Italiano, Polski, Português (Brasil), Русский, 简体中文, 日本語, 한국어 — PRs welcome.
+Translations: English, Français, Deutsch, Español, Italiano, Polski, Português (Brasil), Русский, 简体中文, 日本語,
+한국어 — PRs welcome.
