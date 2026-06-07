@@ -1,6 +1,7 @@
 package dev.lucien.foundry
 
 import dev.lucien.foundry.block.entity.FoundryLavaTank
+import dev.lucien.foundry.registry.ModBlocks
 import dev.lucien.foundry.registry.ModDataComponents
 import dev.lucien.foundry.registry.ModMenuTypes
 import dev.lucien.foundry.screen.FoundryScreen
@@ -26,6 +27,11 @@ class FoundryClient : ClientModInitializer {
                         )
                 )
             }
+        }
+
+        ItemTooltipCallback.EVENT.register { stack, _, _, tooltip ->
+            if (stack.`is`(ModBlocks.SLAG_BRICKS.asItem()))
+                tooltip.add(Component.translatable("block.foundry.slag_bricks.tooltip").withStyle(ChatFormatting.GRAY))
         }
     }
 }

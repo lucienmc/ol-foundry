@@ -1,6 +1,7 @@
 {
   "block.foundry.foundry": "Foundry",
   "block.foundry.slag_bricks": "Slag Bricks",
+  "block.foundry.slag_bricks.tooltip": "Lava drips through 3× faster above dripstone",
   "item.foundry.slag": "Slag",
   "item.foundry.foundry": "Foundry",
   "item.foundry.slag_bricks": "Slag Brick",
