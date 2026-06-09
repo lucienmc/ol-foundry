@@ -54,9 +54,9 @@ class FoundryRecipeProvider(
                 .unlockedBy("has_blast_furnace", has(Items.BLAST_FURNACE))
                 .save(output)
 
-            // ── Slag Bricks (2×2 → 4) ─────────────────────────────────────────
+            // ── Slag Block (2×2 → 4) ──────────────────────────────────────────
             ShapedRecipeBuilder
-                .shaped(items, RecipeCategory.BUILDING_BLOCKS, ModBlocks.SLAG_BRICKS, 4)
+                .shaped(items, RecipeCategory.BUILDING_BLOCKS, ModBlocks.SLAG_BLOCK, 4)
                 .pattern("SS")
                 .pattern("SS")
                 .define('S', ModItems.SLAG)

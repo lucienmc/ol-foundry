@@ -23,8 +23,8 @@ object ModItems {
     /** Block items (registered after blocks exist) */
     val FOUNDRY_ITEM: FoundryItem =
         register("foundry", FoundryItem(ModBlocks.FOUNDRY, Item.Properties().setId(itemKey("foundry"))))
-    val SLAG_BRICKS_ITEM: BlockItem =
-        register("slag_bricks", BlockItem(ModBlocks.SLAG_BRICKS, Item.Properties().setId(itemKey("slag_bricks"))))
+    val SLAG_BLOCK_ITEM: BlockItem =
+        register("slag_block", BlockItem(ModBlocks.SLAG_BLOCK, Item.Properties().setId(itemKey("slag_block"))))
 
     val CUSTOM_CREATIVE_TAB_KEY: ResourceKey<CreativeModeTab> =
         ResourceKey.create(
@@ -37,7 +37,7 @@ object ModItems {
         .displayItems { _: ItemDisplayParameters?, output: CreativeModeTab.Output ->
             output.accept(FOUNDRY_ITEM)
             output.accept(SLAG)
-            output.accept(SLAG_BRICKS_ITEM)
+            output.accept(SLAG_BLOCK_ITEM)
         }
         .build()
 
@@ -62,5 +62,8 @@ object ModItems {
         )
 
         ComposterBlock.COMPOSTABLES[SLAG] = 0.3f
+
+        // Legacy alias so existing inventories keep the item on rename.
+        Registry.register(BuiltInRegistries.ITEM, Identifier.fromNamespaceAndPath(Foundry.MOD_ID, "slag_bricks"), SLAG_BLOCK_ITEM)
     }
 }

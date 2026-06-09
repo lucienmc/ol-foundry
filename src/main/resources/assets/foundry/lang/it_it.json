@@ -1,9 +1,9 @@
 {
   "block.foundry.foundry": "Fonderia",
-  "block.foundry.slag_bricks": "Mattoni di scoria",
+  "block.foundry.slag_block": "Mattoni di scoria",
   "item.foundry.slag": "Scoria",
   "item.foundry.foundry": "Fonderia",
-  "item.foundry.slag_bricks": "Mattone di scoria",
+  "item.foundry.slag_block": "Mattone di scoria",
   "creativeTab.foundry": "Fonderia",
   "container.foundry.foundry": "Fonderia"
 }

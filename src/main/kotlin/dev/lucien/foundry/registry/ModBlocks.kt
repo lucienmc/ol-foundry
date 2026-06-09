@@ -25,11 +25,11 @@ object ModBlocks {
         )
     )
 
-    val SLAG_BRICKS: Block = register(
-        "slag_bricks",
+    val SLAG_BLOCK: Block = register(
+        "slag_block",
         Block(
             BlockBehaviour.Properties.of()
-                .setId(blockKey("slag_bricks"))
+                .setId(blockKey("slag_block"))
                 .strength(1.5f, 6.0f)
                 .requiresCorrectToolForDrops()
                 .sound(SoundType.STONE)
@@ -49,6 +49,8 @@ object ModBlocks {
         )
     }
 
-    /** Forces class-loading so the registrations above run. */
-    fun init() {}
+    fun init() {
+        // Legacy alias so existing worlds don't lose placed blocks on rename.
+        Registry.register(BuiltInRegistries.BLOCK, Identifier.fromNamespaceAndPath(Foundry.MOD_ID, "slag_bricks"), SLAG_BLOCK)
+    }
 }

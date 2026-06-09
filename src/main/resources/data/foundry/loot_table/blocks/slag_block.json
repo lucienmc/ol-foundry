@@ -10,7 +10,7 @@
       "entries": [
         {
           "type": "minecraft:item",
-          "name": "foundry:slag_bricks"
+          "name": "foundry:slag_block"
         }
       ]
     }

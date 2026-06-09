@@ -1,9 +1,9 @@
 {
   "block.foundry.foundry": "Fundição",
-  "block.foundry.slag_bricks": "Tijolos de escória",
+  "block.foundry.slag_block": "Tijolos de escória",
   "item.foundry.slag": "Escória",
   "item.foundry.foundry": "Fundição",
-  "item.foundry.slag_bricks": "Tijolo de escória",
+  "item.foundry.slag_block": "Tijolo de escória",
   "creativeTab.foundry": "Fundição",
   "container.foundry.foundry": "Fundição"
 }

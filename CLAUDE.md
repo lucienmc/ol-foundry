@@ -138,7 +138,7 @@ code — read them there rather than duplicating here.
 - **Slag bricks dripstone accelerator:** `PointedDripstoneBlockMixin.java` injects into two methods of
   `PointedDripstoneBlock`. `canDripThrough` (private static) is overridden to return `true` for slag
   bricks so the upward fluid search isn't blocked. `randomTick` fires two extra `maybeTransferFluid`
-  calls when a downward tip (`THICKNESS == TIP`, `TIP_DIRECTION == DOWN`) has slag bricks at `pos.above()`,
+  calls when a downward tip (`THICKNESS == TIP`, `TIP_DIRECTION == DOWN`) has slag block at `pos.above()`,
   giving ~3× fill rate. **Must be Java:** Kotlin `companion object` emits a non-private static `Companion`
   field that Mixin rejects when merging into the target class. Any future mixin targeting a private static
   method needs the same treatment.

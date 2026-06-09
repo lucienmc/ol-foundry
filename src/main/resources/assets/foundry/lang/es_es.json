@@ -1,9 +1,9 @@
 {
   "block.foundry.foundry": "Fundición",
-  "block.foundry.slag_bricks": "Ladrillos de escoria",
+  "block.foundry.slag_block": "Ladrillos de escoria",
   "item.foundry.slag": "Escoria",
   "item.foundry.foundry": "Fundición",
-  "item.foundry.slag_bricks": "Ladrillo de escoria",
+  "item.foundry.slag_block": "Ladrillo de escoria",
   "creativeTab.foundry": "Fundición",
   "container.foundry.foundry": "Fundición"
 }

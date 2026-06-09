@@ -1,9 +1,9 @@
 {
   "block.foundry.foundry": "Odlewnia",
-  "block.foundry.slag_bricks": "Cegły z żużla",
+  "block.foundry.slag_block": "Cegły z żużla",
   "item.foundry.slag": "Żużel",
   "item.foundry.foundry": "Odlewnia",
-  "item.foundry.slag_bricks": "Cegła z żużla",
+  "item.foundry.slag_block": "Cegła z żużla",
   "creativeTab.foundry": "Odlewnia",
   "container.foundry.foundry": "Odlewnia"
 }

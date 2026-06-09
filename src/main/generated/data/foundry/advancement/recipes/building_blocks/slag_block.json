@@ -13,7 +13,7 @@
     },
     "has_the_recipe": {
       "conditions": {
-        "recipe": "foundry:slag_bricks"
+        "recipe": "foundry:slag_block"
       },
       "trigger": "minecraft:recipe_unlocked"
     }
@@ -26,7 +26,7 @@
   ],
   "rewards": {
     "recipes": [
-      "foundry:slag_bricks"
+      "foundry:slag_block"
     ]
   }
 }

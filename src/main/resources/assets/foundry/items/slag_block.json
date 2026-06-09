@@ -1,6 +1,6 @@
 {
   "model": {
     "type": "minecraft:model",
-    "model": "foundry:block/slag_bricks"
+    "model": "foundry:block/slag_block"
   }
 }

@@ -20,7 +20,7 @@ public abstract class PointedDripstoneBlockMixin {
 
     /**
      * canDripThrough returns false for solid-rendering blocks, which stops the upward
-     * fluid search before it reaches the lava above slag bricks. Override for slag bricks
+     * fluid search before it reaches the lava above slag block. Override for slag block
      * so the search can continue through to the lava source.
      *
      * Static handler is required for a private static target method.
@@ -29,14 +29,14 @@ public abstract class PointedDripstoneBlockMixin {
     private static void letSlagBricksDripThrough(
             BlockGetter world, BlockPos pos, BlockState state,
             CallbackInfoReturnable<Boolean> ci) {
-        if (!ci.getReturnValue() && state.is(ModBlocks.INSTANCE.getSLAG_BRICKS())) {
+        if (!ci.getReturnValue() && state.is(ModBlocks.INSTANCE.getSLAG_BLOCK())) {
             ci.setReturnValue(true);
         }
     }
 
     /**
      * After the vanilla drip attempt, make two additional maybeTransferFluid calls when
-     * slag bricks sits directly above the stalactite tip. Each extra call carries the same
+     * slag block sits directly above the stalactite tip. Each extra call carries the same
      * ~17.6% probability as the vanilla one, giving ~3x the expected fill rate.
      *
      * Only the downward-pointing tip drips; all other dripstone blocks are skipped cheaply.
@@ -47,7 +47,7 @@ public abstract class PointedDripstoneBlockMixin {
             CallbackInfo ci) {
         if (blockState.getValue(PointedDripstoneBlock.THICKNESS) != DripstoneThickness.TIP) return;
         if (blockState.getValue(PointedDripstoneBlock.TIP_DIRECTION) != Direction.DOWN) return;
-        if (!level.getBlockState(pos.above()).is(ModBlocks.INSTANCE.getSLAG_BRICKS())) return;
+        if (!level.getBlockState(pos.above()).is(ModBlocks.INSTANCE.getSLAG_BLOCK())) return;
         PointedDripstoneBlock.maybeTransferFluid(blockState, level, pos, random.nextFloat());
         PointedDripstoneBlock.maybeTransferFluid(blockState, level, pos, random.nextFloat());
     }

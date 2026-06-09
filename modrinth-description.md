@@ -22,10 +22,10 @@ the side.
 Ore smelting drops slag as a byproduct. You can:
 
 - Reprocess it for iron or gold nuggets (lava in the tank gives an extra roll)
-- Craft it into **slag bricks**
+- Craft it into **slag block**
 - Burn it as fuel, or compost it
 
-**Slag bricks and dripstone:** put a slag bricks block between a lava source and a hanging dripstone tip above a
+**Slag bricks and dripstone:** put a slag block block between a lava source and a hanging dripstone tip above a
 cauldron. Lava drips through at 3× speed.
 
 ## Other bits

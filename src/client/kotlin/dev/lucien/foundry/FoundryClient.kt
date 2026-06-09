@@ -30,8 +30,8 @@ class FoundryClient : ClientModInitializer {
         }
 
         ItemTooltipCallback.EVENT.register { stack, _, _, tooltip ->
-            if (stack.`is`(ModBlocks.SLAG_BRICKS.asItem()))
-                tooltip.add(Component.translatable("block.foundry.slag_bricks.tooltip").withStyle(ChatFormatting.GRAY))
+            if (stack.`is`(ModBlocks.SLAG_BLOCK.asItem()))
+                tooltip.add(Component.translatable("block.foundry.slag_block.tooltip").withStyle(ChatFormatting.GRAY))
         }
     }
 }
