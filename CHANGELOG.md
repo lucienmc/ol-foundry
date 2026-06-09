@@ -8,8 +8,10 @@ All notable changes to Foundry are documented here. The format is based on
 
 ### Changed
 
-- Renamed Slag Bricks to **Slag Block**. Existing slag bricks in worlds won't convert automatically — craft new ones from slag if needed.
+- Renamed Slag Bricks to **Slag Block**. Existing slag bricks in worlds won't convert automatically — craft new ones
+  from slag if needed.
 - The Slag Block now shows a tooltip reminding you it accelerates lava drip above dripstone.
+- Updated slag item and block textures
 
 ## [1.0.9] - 2026-06-06
 
