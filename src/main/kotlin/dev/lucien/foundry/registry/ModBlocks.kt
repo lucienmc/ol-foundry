@@ -49,8 +49,6 @@ object ModBlocks {
         )
     }
 
-    fun init() {
-        // Legacy alias so existing worlds don't lose placed blocks on rename.
-        Registry.register(BuiltInRegistries.BLOCK, Identifier.fromNamespaceAndPath(Foundry.MOD_ID, "slag_bricks"), SLAG_BLOCK)
-    }
+    /** Forces class-loading so the registrations above run. */
+    fun init() {}
 }

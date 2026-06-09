@@ -63,7 +63,5 @@ object ModItems {
 
         ComposterBlock.COMPOSTABLES[SLAG] = 0.3f
 
-        // Legacy alias so existing inventories keep the item on rename.
-        Registry.register(BuiltInRegistries.ITEM, Identifier.fromNamespaceAndPath(Foundry.MOD_ID, "slag_bricks"), SLAG_BLOCK_ITEM)
     }
 }
