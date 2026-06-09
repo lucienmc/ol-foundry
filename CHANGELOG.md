@@ -4,6 +4,13 @@ All notable changes to Foundry are documented here. The format is based on
 [Keep a Changelog](https://keepachangelog.com/en/1.1.0/), and this project aims to follow
 [Semantic Versioning](https://semver.org/).
 
+## [1.0.10] - 2026-06-09
+
+### Changed
+
+- Renamed Slag Bricks to **Slag Block**. Existing slag bricks in worlds won't convert automatically — craft new ones from slag if needed.
+- The Slag Block now shows a tooltip reminding you it accelerates lava drip above dripstone.
+
 ## [1.0.9] - 2026-06-06
 
 ### Added
